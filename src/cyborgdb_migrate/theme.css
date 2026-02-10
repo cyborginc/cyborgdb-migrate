@@ -1,0 +1,69 @@
+/* Global */
+Screen {
+    background: $surface;
+}
+
+/* Step header bar */
+.step-header {
+    dock: top;
+    height: 3;
+    background: $primary;
+    color: $text;
+    text-align: center;
+    text-style: bold;
+    padding: 1;
+}
+
+/* Main content area */
+.step-content {
+    padding: 1 2;
+}
+
+/* Summary panels */
+.summary-panel {
+    border: round $accent;
+    padding: 1 2;
+    margin: 1 0;
+}
+
+/* Warning panels (encryption key) */
+.warning-panel {
+    border: heavy $warning;
+    background: $warning 10%;
+    padding: 1 2;
+    margin: 1 0;
+}
+
+/* Action buttons row */
+.button-row {
+    dock: bottom;
+    height: 3;
+    align: right middle;
+    padding: 0 2;
+}
+
+/* Progress area */
+.progress-container {
+    padding: 1 2;
+}
+
+/* Resume panel */
+.resume-panel {
+    border: round $accent;
+    padding: 1 2;
+    margin: 1 0;
+}
+
+/* Key warning modal */
+KeyWarningModal {
+    align: center middle;
+}
+
+KeyWarningModal > Vertical {
+    width: 60;
+    height: auto;
+    max-height: 80%;
+    border: heavy $warning;
+    background: $surface;
+    padding: 1 2;
+}
