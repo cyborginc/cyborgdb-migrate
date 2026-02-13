@@ -3,26 +3,38 @@ import pytest
 from cyborgdb_migrate.app import MigrateApp
 from cyborgdb_migrate.models import MigrationState
 from cyborgdb_migrate.screens.source_select import SourceSelectScreen
+from cyborgdb_migrate.screens.welcome import WelcomeScreen
 from cyborgdb_migrate.widgets.key_warning import KeyWarningModal
 
 
 class TestAppStartup:
     @pytest.mark.asyncio
-    async def test_app_starts_on_source_select(self):
+    async def test_app_starts_on_welcome(self):
         app = MigrateApp()
         async with app.run_test() as pilot:
+            await pilot.pause()
+            assert isinstance(app.screen, WelcomeScreen)
+
+    @pytest.mark.asyncio
+    async def test_get_started_navigates_to_source_select(self):
+        app = MigrateApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.screen.query_one("#get-started-btn").press()
             await pilot.pause()
             assert isinstance(app.screen, SourceSelectScreen)
 
     @pytest.mark.asyncio
-    async def test_source_list_shows_5_sources(self):
+    async def test_source_list_shows_6_sources(self):
         app = MigrateApp()
         async with app.run_test() as pilot:
+            await pilot.pause()
+            app.screen.query_one("#get-started-btn").press()
             await pilot.pause()
             from textual.widgets import OptionList
 
             option_list = app.screen.query_one("#source-list", OptionList)
-            assert option_list.option_count == 5
+            assert option_list.option_count == 6
 
     @pytest.mark.asyncio
     async def test_app_has_title(self):

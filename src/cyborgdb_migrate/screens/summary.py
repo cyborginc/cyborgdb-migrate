@@ -13,14 +13,14 @@ if TYPE_CHECKING:
 
 
 class SummaryScreen(Screen):
-    """Step 6: Verification results and quickstart snippet."""
+    """Step 7: Verification results and quickstart snippet."""
 
     def __init__(self, state: MigrationState) -> None:
         super().__init__()
         self.state = state
 
     def compose(self):
-        yield StepHeader(6, "Complete")
+        yield StepHeader(7, "Complete")
         with Vertical(classes="step-content"):
             yield Static("", id="verification-results")
             yield Static("", id="migration-summary", classes="summary-panel")

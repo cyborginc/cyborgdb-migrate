@@ -1,27 +1,45 @@
 /* Global */
 Screen {
-    background: $surface;
+    background: $background;
+    align: center middle;
 }
 
-/* Step header bar */
-.step-header {
-    dock: top;
-    height: 3;
-    background: $primary;
-    color: $text;
+/* Welcome / landing page */
+.welcome-content {
+    align: center middle;
+    width: 100%;
+    height: 100%;
+}
+
+.welcome-content > Static {
+    width: 100%;
     text-align: center;
-    text-style: bold;
-    padding: 1;
 }
 
-/* Main content area */
+.welcome-subtitle {
+    margin: 2 0 1 0;
+}
+
+.welcome-description {
+    margin: 0 0 1 0;
+}
+
+.welcome-content > Button {
+    width: auto;
+}
+
+/* Main content area — centered column */
 .step-content {
     padding: 1 2;
+    width: 80;
+    max-width: 100%;
+    align: center middle;
 }
 
 /* Summary panels */
 .summary-panel {
     border: round $accent;
+    background: $panel;
     padding: 1 2;
     margin: 1 0;
 }
@@ -37,9 +55,21 @@ Screen {
 /* Action buttons row */
 .button-row {
     dock: bottom;
-    height: 3;
+    height: 5;
     align: right middle;
-    padding: 0 2;
+    padding: 1 2;
+}
+
+/* Input spacing */
+Input {
+    margin: 0 0 1 0;
+}
+
+/* Option lists */
+OptionList {
+    height: auto;
+    max-height: 12;
+    background: $surface;
 }
 
 /* Progress area */
@@ -50,6 +80,7 @@ Screen {
 /* Resume panel */
 .resume-panel {
     border: round $accent;
+    background: $panel;
     padding: 1 2;
     margin: 1 0;
 }

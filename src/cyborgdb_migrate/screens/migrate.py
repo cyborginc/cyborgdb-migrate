@@ -43,7 +43,7 @@ class MigrationFailed(Message):
 
 
 class MigrateScreen(Screen):
-    """Step 5: Live migration progress."""
+    """Step 6: Live migration progress."""
 
     def __init__(self, state: MigrationState) -> None:
         super().__init__()
@@ -59,7 +59,7 @@ class MigrateScreen(Screen):
         if self.state.index_name:
             dest_name = self.state.index_name
 
-        yield StepHeader(5, "Migrating")
+        yield StepHeader(6, "Migrating")
         with Vertical(classes="step-content"):
             yield Label(f"{src_name} -> CyborgDB ({dest_name})")
 
@@ -85,7 +85,7 @@ class MigrateScreen(Screen):
             yield Button("Cancel Migration", id="cancel-btn", variant="error")
 
     def on_mount(self) -> None:
-        self.state.ready_for_step(5)
+        self.state.ready_for_step(6)
         self.query_one("#resume-panel").display = False
 
         # Check for existing checkpoint

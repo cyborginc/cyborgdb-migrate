@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class DestIndexScreen(Screen):
-    """Step 4: Create or select destination index + encryption key."""
+    """Step 5: Create or select destination index + encryption key."""
 
     def __init__(self, state: MigrationState) -> None:
         super().__init__()
@@ -35,7 +35,7 @@ class DestIndexScreen(Screen):
         self._mode = "create"  # "create" or "existing"
 
     def compose(self):
-        yield StepHeader(4, "Destination Index")
+        yield StepHeader(5, "Destination Index")
         with Vertical(classes="step-content"):
             yield OptionList(
                 Option("Create new index", id="create"),
@@ -87,7 +87,7 @@ class DestIndexScreen(Screen):
             yield Button("Continue", id="continue-btn", variant="primary")
 
     def on_mount(self) -> None:
-        self.state.ready_for_step(4)
+        self.state.ready_for_step(5)
         self.query_one("#existing-form").display = False
         self.query_one("#own-key-input").display = False
         self.query_one("#existing-loading").display = False

@@ -9,76 +9,11 @@ from cyborgdb_migrate.sources.base import CredentialField, SourceConnector
 logger = logging.getLogger(__name__)
 
 
-class ChromaDBSource(SourceConnector):
+class _ChromaDBBase(SourceConnector):
+    """Shared inspect/extract logic for ChromaDB sources."""
+
     def __init__(self) -> None:
-        self._mode: str = "remote"
-        self._path: str = "./chroma_data"
-        self._host: str = "localhost"
-        self._port: int = 8000
         self._client = None
-
-    def name(self) -> str:
-        return "ChromaDB"
-
-    def credential_fields(self) -> list[CredentialField]:
-        return [
-            CredentialField(
-                key="mode",
-                label="Mode",
-                default="remote",
-                help_text="'local' for PersistentClient with a filesystem path, "
-                "'remote' for HttpClient",
-            ),
-            CredentialField(
-                key="path",
-                label="Data Path",
-                default="./chroma_data",
-                help_text="Filesystem path to ChromaDB data directory",
-                visible_when={"mode": "local"},
-            ),
-            CredentialField(
-                key="host",
-                label="Host",
-                default="localhost",
-                visible_when={"mode": "remote"},
-            ),
-            CredentialField(
-                key="port",
-                label="Port",
-                default="8000",
-                visible_when={"mode": "remote"},
-            ),
-        ]
-
-    def configure(self, credentials: dict[str, str]) -> None:
-        self._mode = credentials.get("mode", "remote").strip()
-        if self._mode not in ("local", "remote"):
-            raise ValueError(f"ChromaDB mode must be 'local' or 'remote', got '{self._mode}'")
-
-        if self._mode == "local":
-            self._path = credentials.get("path", "./chroma_data").strip()
-            if not self._path:
-                raise ValueError("ChromaDB data path is required in local mode")
-        else:
-            self._host = credentials.get("host", "localhost").strip()
-            port_str = credentials.get("port", "8000").strip()
-            try:
-                self._port = int(port_str)
-            except ValueError:
-                raise ValueError(f"Invalid port number: {port_str}")
-
-    def connect(self) -> None:
-        import chromadb
-
-        if self._mode == "local":
-            self._client = chromadb.PersistentClient(path=self._path)
-            logger.info("Connected to ChromaDB (local) at %s", self._path)
-        else:
-            self._client = chromadb.HttpClient(host=self._host, port=self._port)
-            logger.info("Connected to ChromaDB (remote) at %s:%d", self._host, self._port)
-
-        # Validate connection
-        self._client.heartbeat()
 
     def list_indexes(self) -> list[str]:
         collections = self._client.list_collections()
@@ -150,3 +85,77 @@ class ChromaDBSource(SourceConnector):
 
             if len(ids) < batch_size:
                 break
+
+
+class ChromaDBLocalSource(_ChromaDBBase):
+    """ChromaDB with PersistentClient (local filesystem)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._path: str = "./chroma_data"
+
+    def name(self) -> str:
+        return "ChromaDB (Local)"
+
+    def credential_fields(self) -> list[CredentialField]:
+        return [
+            CredentialField(
+                key="path",
+                label="Data Path",
+                default="./chroma_data",
+                help_text="Filesystem path to ChromaDB data directory",
+            ),
+        ]
+
+    def configure(self, credentials: dict[str, str]) -> None:
+        self._path = credentials.get("path", "./chroma_data").strip()
+        if not self._path:
+            raise ValueError("ChromaDB data path is required")
+
+    def connect(self) -> None:
+        import chromadb
+
+        self._client = chromadb.PersistentClient(path=self._path)
+        logger.info("Connected to ChromaDB (local) at %s", self._path)
+        self._client.heartbeat()
+
+
+class ChromaDBRemoteSource(_ChromaDBBase):
+    """ChromaDB with HttpClient (remote server)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._host: str = "localhost"
+        self._port: int = 8000
+
+    def name(self) -> str:
+        return "ChromaDB (Remote)"
+
+    def credential_fields(self) -> list[CredentialField]:
+        return [
+            CredentialField(
+                key="host",
+                label="Host",
+                default="localhost",
+            ),
+            CredentialField(
+                key="port",
+                label="Port",
+                default="8000",
+            ),
+        ]
+
+    def configure(self, credentials: dict[str, str]) -> None:
+        self._host = credentials.get("host", "localhost").strip()
+        port_str = credentials.get("port", "8000").strip()
+        try:
+            self._port = int(port_str)
+        except ValueError:
+            raise ValueError(f"Invalid port number: {port_str}")
+
+    def connect(self) -> None:
+        import chromadb
+
+        self._client = chromadb.HttpClient(host=self._host, port=self._port)
+        logger.info("Connected to ChromaDB (remote) at %s:%d", self._host, self._port)
+        self._client.heartbeat()

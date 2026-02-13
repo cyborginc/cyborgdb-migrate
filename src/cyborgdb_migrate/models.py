@@ -74,16 +74,17 @@ class MigrationState:
         """Assert that all fields required by the given step are set."""
         checks: dict[int, list[tuple[str, str]]] = {
             2: [("source_connector", "Source connector not configured")],
-            3: [
+            3: [("source_connector", "Source connector not configured")],
+            4: [
                 ("source_connector", "Source connector not configured"),
                 ("source_info", "Source not inspected"),
             ],
-            4: [
+            5: [
                 ("source_connector", "Source connector not configured"),
                 ("source_info", "Source not inspected"),
                 ("cyborgdb_destination", "CyborgDB not connected"),
             ],
-            5: [
+            6: [
                 ("source_connector", "Source connector not configured"),
                 ("source_info", "Source not inspected"),
                 ("cyborgdb_destination", "CyborgDB not connected"),

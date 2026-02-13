@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class SourceInspectScreen(Screen):
-    """Step 2: Select index and namespace, view summary."""
+    """Step 3: Select index and namespace, view summary."""
 
     def __init__(self, state: MigrationState) -> None:
         super().__init__()
@@ -24,7 +24,7 @@ class SourceInspectScreen(Screen):
         self._source_info: SourceInfo | None = None
 
     def compose(self):
-        yield StepHeader(2, "Select Data")
+        yield StepHeader(3, "Select Data")
         with Vertical(classes="step-content"):
             yield Label("Select an index to migrate:")
             yield LoadingIndicator(id="index-loading")
@@ -37,7 +37,7 @@ class SourceInspectScreen(Screen):
             yield Button("Continue", id="continue-btn", variant="primary", disabled=True)
 
     def on_mount(self) -> None:
-        self.state.ready_for_step(2)
+        self.state.ready_for_step(3)
         self.query_one("#ns-label").display = False
         self.query_one("#ns-list").display = False
         self.query_one("#summary-panel").display = False

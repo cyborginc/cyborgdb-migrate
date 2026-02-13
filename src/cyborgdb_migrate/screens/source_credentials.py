@@ -5,42 +5,41 @@ from typing import TYPE_CHECKING
 from textual import work
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, LoadingIndicator, Static
+from textual.widgets import Button, LoadingIndicator, Static
 
-from cyborgdb_migrate.destination import CyborgDestination
+from cyborgdb_migrate.widgets.source_form import SourceForm
 from cyborgdb_migrate.widgets.step_header import StepHeader
 
 if TYPE_CHECKING:
     from cyborgdb_migrate.models import MigrationState
 
 
-class CyborgConnectScreen(Screen):
-    """Step 4: Connect to CyborgDB."""
+class SourceCredentialsScreen(Screen):
+    """Step 2: Enter credentials for the selected source and connect."""
 
     def __init__(self, state: MigrationState) -> None:
         super().__init__()
         self.state = state
 
     def compose(self):
-        yield StepHeader(4, "CyborgDB Connection")
+        source_name = ""
+        if self.state.source_connector:
+            source_name = self.state.source_connector.name()
+        yield StepHeader(2, "Credentials")
         with Vertical(classes="step-content"):
-            yield Label("CyborgDB host URL:")
-            yield Input(
-                value="https://localhost:8000",
-                placeholder="https://localhost:8000",
-                id="host-input",
-            )
-            yield Label("CyborgDB API key:")
-            yield Input(password=True, id="api-key-input")
+            yield Static(f"Enter credentials for [bold]{source_name}[/bold]:")
+            yield SourceForm(id="source-form")
             yield Static("", id="error-label")
             yield LoadingIndicator(id="connect-loading")
         with Horizontal(classes="button-row"):
             yield Button("Back", id="back-btn")
             yield Button("Connect & Continue", id="connect-btn", variant="primary")
 
-    def on_mount(self) -> None:
-        self.state.ready_for_step(4)
+    async def on_mount(self) -> None:
+        self.state.ready_for_step(2)
         self.query_one("#connect-loading", LoadingIndicator).display = False
+        form = self.query_one("#source-form", SourceForm)
+        await form.rebuild(self.state.source_connector.credential_fields())
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "back-btn":
@@ -57,17 +56,10 @@ class CyborgConnectScreen(Screen):
         self.app.call_from_thread(setattr, loading, "display", True)
 
         try:
-            host = self.query_one("#host-input", Input).value.strip()
-            api_key = self.query_one("#api-key-input", Input).value.strip()
-
-            if not host:
-                raise ValueError("Host URL is required")
-            if not api_key:
-                raise ValueError("API key is required")
-
-            dest = CyborgDestination()
-            dest.connect(host, api_key)
-            self.state.cyborgdb_destination = dest
+            form = self.query_one("#source-form", SourceForm)
+            credentials = form.get_values()
+            self.state.source_connector.configure(credentials)
+            self.state.source_connector.connect()
 
             self.app.call_from_thread(self._push_next)
         except Exception as e:
@@ -76,6 +68,6 @@ class CyborgConnectScreen(Screen):
             self.app.call_from_thread(setattr, loading, "display", False)
 
     def _push_next(self) -> None:
-        from cyborgdb_migrate.screens.dest_index import DestIndexScreen
+        from cyborgdb_migrate.screens.source_inspect import SourceInspectScreen
 
-        self.app.push_screen(DestIndexScreen(self.state))
+        self.app.push_screen(SourceInspectScreen(self.state))
