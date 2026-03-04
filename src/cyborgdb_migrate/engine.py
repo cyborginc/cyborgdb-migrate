@@ -154,7 +154,7 @@ class MigrationEngine:
                     self._emit_progress(
                         vectors_migrated, total_vectors, batches_completed, total_batches,
                         errors, start_time,
-                        message=f"Batch {batches_completed} upserted ({len(batch)} vec)",
+                        message=f"Batch {batches_completed} sent ({len(batch)} vec)",
                     )
 
             # Wait for final upsert

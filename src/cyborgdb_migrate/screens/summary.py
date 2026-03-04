@@ -68,7 +68,7 @@ class SummaryScreen(Screen):
             'from cyborgdb import Client\n'
             '\n'
             'client = Client(\n'
-            '    "https://localhost:8000", api_key\n'
+            '    "http://localhost:8000", api_key\n'
             ')\n'
             'index = client.load_index(\n'
             f'    "{result.index_name}", index_key\n'

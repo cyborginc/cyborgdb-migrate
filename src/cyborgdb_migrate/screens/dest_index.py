@@ -140,8 +140,13 @@ class DestIndexScreen(Screen):
             def update():
                 lst = self.query_one("#existing-list", OptionList)
                 lst.clear_options()
-                for name in indexes:
-                    lst.add_option(Option(name, id=name))
+                if not indexes:
+                    self.query_one("#error-label", Static).update(
+                        "[yellow]No existing indexes found. Go back and create a new index instead.[/yellow]"
+                    )
+                else:
+                    for name in indexes:
+                        lst.add_option(Option(name, id=name))
                 loading.display = False
 
             self.app.call_from_thread(update)
@@ -215,7 +220,7 @@ class DestIndexScreen(Screen):
         dest = self.state.cyborgdb_destination
 
         if generate_key:
-            key_bytes, key_path = dest.generate_and_save_key()
+            key_bytes, key_path = dest.generate_and_save_key(index_name=index_name)
             self.state.index_key = key_bytes
             self.state.key_file_path = key_path
 

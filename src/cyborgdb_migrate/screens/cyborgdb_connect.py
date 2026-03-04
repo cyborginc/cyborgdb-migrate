@@ -26,8 +26,8 @@ class CyborgConnectScreen(Screen):
         with Vertical(classes="step-content"):
             yield Label("CyborgDB host URL:")
             yield Input(
-                value="https://localhost:8000",
-                placeholder="https://localhost:8000",
+                value="http://localhost:8000",
+                placeholder="http://localhost:8000",
                 id="host-input",
             )
             yield Label("CyborgDB API key:")

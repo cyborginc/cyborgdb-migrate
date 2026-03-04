@@ -98,27 +98,23 @@ class CyborgDestination:
             return None
 
     def upsert_batch(self, records: list[VectorRecord]) -> int:
-        """Upsert a batch of records using efficient binary format. Returns upserted count."""
+        """Upsert a batch of records. Returns upserted count."""
         if not records:
             return 0
 
-        ids = [r.id for r in records]
-        vectors = np.array([r.vector for r in records], dtype=np.float32)
+        items: list[dict[str, Any]] = []
+        for r in records:
+            item: dict[str, Any] = {
+                "id": r.id,
+                "vector": np.array(r.vector, dtype=np.float32),
+            }
+            if r.metadata:
+                item["metadata"] = r.metadata
+            if r.contents is not None:
+                item["contents"] = r.contents
+            items.append(item)
 
-        metadata: list[dict[str, Any] | None] | None = None
-        if any(r.metadata for r in records):
-            metadata = [r.metadata if r.metadata else None for r in records]
-
-        contents: list[str | bytes | None] | None = None
-        if any(r.contents is not None for r in records):
-            contents = [r.contents for r in records]
-
-        self._index.upsert_binary(
-            ids=ids,
-            vectors=vectors,
-            metadata=metadata,
-            contents=contents,
-        )
+        self._index.upsert(items)
         return len(records)
 
     def get_count(self) -> int:
@@ -140,7 +136,7 @@ class CyborgDestination:
             )
         return records
 
-    def generate_and_save_key(self, key_path: str | None = None) -> tuple[bytes, str]:
+    def generate_and_save_key(self, key_path: str | None = None, index_name: str | None = None) -> tuple[bytes, str]:
         """Generate a new key, save to file with chmod 600.
 
         Returns (key_bytes, file_path). Raises FileExistsError if key file already exists.
@@ -149,8 +145,9 @@ class CyborgDestination:
         key = Client.generate_key(save=False)
         self._last_generated_key = key
 
+        name = index_name or self._index_name or "index"
         if key_path is None:
-            key_path = os.path.join(KEY_DIR, f"{self._index_name or 'index'}.key")
+            key_path = os.path.join(KEY_DIR, f"{name}.key")
 
         path = Path(key_path)
         path.parent.mkdir(parents=True, exist_ok=True)

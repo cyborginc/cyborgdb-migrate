@@ -151,17 +151,19 @@ class TestCyborgDestination:
         count = dest.upsert_batch(records)
 
         assert count == 2
-        dest._index.upsert_binary.assert_called_once()
-        call_kwargs = dest._index.upsert_binary.call_args[1]
-        assert call_kwargs["ids"] == ["v1", "v2"]
-        np.testing.assert_array_almost_equal(
-            call_kwargs["vectors"], np.array([[0.1, 0.2], [0.3, 0.4]], dtype=np.float32)
-        )
+        dest._index.upsert.assert_called_once()
+        items = dest._index.upsert.call_args[0][0]
+        assert items[0]["id"] == "v1"
+        assert items[1]["id"] == "v2"
+        np.testing.assert_array_almost_equal(items[0]["vector"], np.array([0.1, 0.2], dtype=np.float32))
+        np.testing.assert_array_almost_equal(items[1]["vector"], np.array([0.3, 0.4], dtype=np.float32))
+        assert items[0]["metadata"] == {"k": "v"}
+        assert "metadata" not in items[1]
 
     def test_upsert_batch_empty(self):
         dest = self._make_dest()
         assert dest.upsert_batch([]) == 0
-        dest._index.upsert_binary.assert_not_called()
+        dest._index.upsert.assert_not_called()
 
     def test_upsert_batch_with_contents(self):
         dest = self._make_dest()
@@ -171,8 +173,9 @@ class TestCyborgDestination:
         ]
         dest.upsert_batch(records)
 
-        call_kwargs = dest._index.upsert_binary.call_args[1]
-        assert call_kwargs["contents"] == ["hello", None]
+        items = dest._index.upsert.call_args[0][0]
+        assert items[0]["contents"] == "hello"
+        assert "contents" not in items[1]
 
     def test_get_count(self):
         dest = self._make_dest()

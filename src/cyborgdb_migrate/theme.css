@@ -33,7 +33,7 @@ Screen {
     padding: 1 2;
     width: 80;
     max-width: 100%;
-    align: center middle;
+    height: auto;
 }
 
 /* Summary panels */
