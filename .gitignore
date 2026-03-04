@@ -40,3 +40,13 @@ htmlcov/
 cyborgdb-migrate-checkpoints/
 cyborgdb-migrate-keys/
 cyborgdb-migrate.log
+
+# seeded dbs
+scripts/seed/chroma_data/
+scripts/seed/volumes/
+
+# Seed source configs
+seed-sources*.toml
+
+# Environment variables
+.env

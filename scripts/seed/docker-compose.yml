@@ -1,0 +1,117 @@
+services:
+  # --- Milvus standalone (requires etcd + minio) ---
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.25
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ./volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ./volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.27
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - ./volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - etcd
+      - minio
+
+  # --- Weaviate ---
+  weaviate:
+    container_name: weaviate
+    image: cr.weaviate.io/semitechnologies/weaviate:1.36.0
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+
+  # --- ChromaDB ---
+  chromadb:
+    container_name: chromadb
+    image: chromadb/chroma:1.5.2
+    ports:
+      - "8000:8000"
+    environment:
+      ALLOW_RESET: "true"
+
+  # --- Qdrant ---
+  qdrant:
+    container_name: qdrant
+    image: qdrant/qdrant:v1.17.0
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./volumes/qdrant:/qdrant/storage
+
+  # --- CyborgDB + Redis ---
+  redis:
+    container_name: cyborgdb-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./volumes/redis:/data
+
+  cyborgdb:
+    container_name: cyborgdb
+    image: cyborginc/cyborgdb-service:0.15.0
+    ports:
+      - "8100:8000"
+    environment:
+      - CYBORGDB_DB_TYPE=redis
+      - CYBORGDB_CONNECTION_STRING=host:redis,port:6379,db:0
+      - CYBORGDB_API_KEY=${CYBORGDB_API_KEY:?Set CYBORGDB_API_KEY in .env}
+    depends_on:
+      - redis
+
+networks:
+  default:
+    name: seed-network

@@ -1,0 +1,7 @@
+h5py
+numpy
+pymilvus
+pinecone
+weaviate-client
+chromadb
+qdrant-client
