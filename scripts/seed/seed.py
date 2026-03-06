@@ -56,7 +56,7 @@ def main():
 
     # ChromaDB remote
     parser.add_argument("--chromadb-host", default="localhost", help="ChromaDB server host")
-    parser.add_argument("--chromadb-port", type=int, default=8000, help="ChromaDB server port")
+    parser.add_argument("--chromadb-port", type=int, default=8100, help="ChromaDB server port")
 
     # Qdrant
     parser.add_argument("--qdrant-host", default="http://localhost:6333", help="Qdrant URL")

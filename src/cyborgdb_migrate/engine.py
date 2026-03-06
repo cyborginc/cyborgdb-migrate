@@ -234,8 +234,10 @@ class MigrationEngine:
                 continue
             checked += 1
 
-            # Vector comparison
-            if not np.allclose(sample.vector, dest_rec.vector, atol=1e-6):
+            # Vector comparison — flatten to 1-D to avoid shape mismatches
+            src_vec = np.asarray(sample.vector, dtype=np.float32).ravel()
+            dst_vec = np.asarray(dest_rec.vector, dtype=np.float32).ravel()
+            if src_vec.shape != dst_vec.shape or not np.allclose(src_vec, dst_vec, atol=1e-6):
                 mismatches += 1
                 continue
 

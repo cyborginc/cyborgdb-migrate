@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from textual import work
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, LoadingIndicator, Static
+from textual.widgets import Button, Static
 
 from cyborgdb_migrate.widgets.source_form import SourceForm
 from cyborgdb_migrate.widgets.step_header import StepHeader
@@ -22,22 +22,16 @@ class SourceCredentialsScreen(Screen):
         self.state = state
 
     def compose(self):
-        source_name = ""
-        if self.state.source_connector:
-            source_name = self.state.source_connector.name()
         yield StepHeader(2, "Credentials")
         with Vertical(classes="step-content"):
-            yield Static(f"Enter credentials for [bold]{source_name}[/bold]:")
             yield SourceForm(id="source-form")
             yield Static("", id="error-label")
-            yield LoadingIndicator(id="connect-loading")
         with Horizontal(classes="button-row"):
             yield Button("Back", id="back-btn")
             yield Button("Connect & Continue", id="connect-btn", variant="primary")
 
     async def on_mount(self) -> None:
         self.state.ready_for_step(2)
-        self.query_one("#connect-loading", LoadingIndicator).display = False
         form = self.query_one("#source-form", SourceForm)
         await form.rebuild(self.state.source_connector.credential_fields())
 
@@ -50,10 +44,11 @@ class SourceCredentialsScreen(Screen):
     @work(thread=True)
     async def _do_connect(self) -> None:
         error_label = self.query_one("#error-label", Static)
-        loading = self.query_one("#connect-loading", LoadingIndicator)
+        connect_btn = self.query_one("#connect-btn", Button)
 
         self.app.call_from_thread(error_label.update, "")
-        self.app.call_from_thread(setattr, loading, "display", True)
+        self.app.call_from_thread(setattr, connect_btn, "label", "Connecting...")
+        self.app.call_from_thread(setattr, connect_btn, "disabled", True)
 
         try:
             form = self.query_one("#source-form", SourceForm)
@@ -65,7 +60,8 @@ class SourceCredentialsScreen(Screen):
         except Exception as e:
             self.app.call_from_thread(error_label.update, f"[red]Error: {e}[/red]")
         finally:
-            self.app.call_from_thread(setattr, loading, "display", False)
+            self.app.call_from_thread(setattr, connect_btn, "label", "Connect & Continue")
+            self.app.call_from_thread(setattr, connect_btn, "disabled", False)
 
     def _push_next(self) -> None:
         from cyborgdb_migrate.screens.source_inspect import SourceInspectScreen

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widget import Widget
-from textual.widgets import Input, Label
+from textual.widgets import Input, Label, RadioButton, RadioSet
 
 from cyborgdb_migrate.sources.base import CredentialField
 
@@ -14,31 +14,53 @@ class SourceForm(Vertical):
         super().__init__(**kwargs)
         self._fields: list[CredentialField] = []
         self._inputs: dict[str, Input] = {}
+        self._radio_sets: dict[str, RadioSet] = {}
         self._field_widgets: dict[str, list[Widget]] = {}
 
     async def rebuild(self, fields: list[CredentialField]) -> None:
         """Clear and rebuild the form with new credential fields."""
         self._fields = fields
         self._inputs.clear()
+        self._radio_sets.clear()
         self._field_widgets.clear()
         await self.remove_children()
 
         for field in fields:
             widgets: list[Widget] = []
-            label = Label(f"{field.label}:")
-            inp = Input(
-                placeholder=field.default or "",
-                password=field.is_secret,
-                id=f"cred-{field.key}",
-            )
-            if field.default:
-                inp.value = field.default
 
-            self._inputs[field.key] = inp
-            widgets.append(label)
-            widgets.append(inp)
-            self.mount(label)
-            self.mount(inp)
+            if field.options:
+                # Render as radio buttons
+                label = Label(f"{field.label}:")
+                widgets.append(label)
+                self.mount(label)
+
+                default_idx = 0
+                if field.default and field.default in field.options:
+                    default_idx = field.options.index(field.default)
+
+                radio_set = RadioSet(
+                    *[RadioButton(opt, value=(i == default_idx)) for i, opt in enumerate(field.options)],
+                    id=f"cred-{field.key}",
+                )
+                self._radio_sets[field.key] = radio_set
+                widgets.append(radio_set)
+                self.mount(radio_set)
+            else:
+                # Render as text input
+                label = Label(f"{field.label}:")
+                inp = Input(
+                    placeholder=field.default or "",
+                    password=field.is_secret,
+                    id=f"cred-{field.key}",
+                )
+                if field.default:
+                    inp.value = field.default
+
+                self._inputs[field.key] = inp
+                widgets.append(label)
+                widgets.append(inp)
+                self.mount(label)
+                self.mount(inp)
 
             if field.help_text:
                 help_label = Label(f"  {field.help_text}", classes="help-text")
@@ -51,10 +73,22 @@ class SourceForm(Vertical):
 
     def get_values(self) -> dict[str, str]:
         """Return current field values."""
-        return {key: inp.value for key, inp in self._inputs.items()}
+        values = {}
+        for key, inp in self._inputs.items():
+            values[key] = inp.value
+        for key, radio_set in self._radio_sets.items():
+            if radio_set.pressed_button is not None:
+                values[key] = str(radio_set.pressed_button.label)
+            else:
+                values[key] = ""
+        return values
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """React to input changes for visible_when logic."""
+        self._apply_visibility()
+
+    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        """React to radio selection changes for visible_when logic."""
         self._apply_visibility()
 
     def _apply_visibility(self) -> None:

@@ -61,6 +61,7 @@ class MigrationState:
     selected_namespace: str | None = None
     # Step 3: CyborgDB connection
     cyborgdb_destination: CyborgDestination | None = None
+    existing_indexes: list[str] = field(default_factory=list)
     # Step 4: destination index
     index_name: str | None = None
     index_key: bytes | None = None

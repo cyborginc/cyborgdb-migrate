@@ -3,74 +3,95 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cyborgdb_migrate.sources.chromadb import ChromaDBLocalSource, ChromaDBRemoteSource
+from cyborgdb_migrate.sources.chromadb import ChromaDBSource
 
 
-class TestChromaDBLocalCredentials:
+class TestChromaDBCredentials:
     def test_credential_fields(self):
-        source = ChromaDBLocalSource()
+        source = ChromaDBSource()
         fields = source.credential_fields()
-        assert len(fields) == 1
+        assert len(fields) == 3
 
         keys = [f.key for f in fields]
+        assert "mode" in keys
+        assert "host" in keys
         assert "path" in keys
 
-        # No visible_when on any field
-        for f in fields:
-            assert f.visible_when is None
+        mode_field = fields[0]
+        assert mode_field.options == ["Remote", "Local"]
 
-    def test_configure(self):
-        source = ChromaDBLocalSource()
-        source.configure({"path": "/data/chroma"})
-        assert source._path == "/data/chroma"
+        host_field = fields[1]
+        assert host_field.visible_when == {"mode": "Remote"}
 
-    def test_configure_empty_path(self):
-        source = ChromaDBLocalSource()
-        with pytest.raises(ValueError, match="path is required"):
-            source.configure({"path": ""})
-
-    def test_configure_default_path(self):
-        source = ChromaDBLocalSource()
-        source.configure({})
-        assert source._path == "./chroma_data"
+        path_field = fields[2]
+        assert path_field.visible_when == {"mode": "Local"}
 
     def test_name(self):
-        assert ChromaDBLocalSource().name() == "ChromaDB (Local)"
+        assert ChromaDBSource().name() == "ChromaDB"
 
 
-class TestChromaDBRemoteCredentials:
-    def test_credential_fields(self):
-        source = ChromaDBRemoteSource()
-        fields = source.credential_fields()
-        assert len(fields) == 2
-
-        keys = [f.key for f in fields]
-        assert "host" in keys
-        assert "port" in keys
-
-        # No visible_when on any field
-        for f in fields:
-            assert f.visible_when is None
-
-    def test_configure(self):
-        source = ChromaDBRemoteSource()
-        source.configure({"host": "chroma-host", "port": "9000"})
+class TestChromaDBConfigure:
+    def test_configure_remote_with_port(self):
+        source = ChromaDBSource()
+        source.configure({"mode": "Remote", "host": "chroma-host:9000"})
+        assert source._mode == "remote"
         assert source._host == "chroma-host"
         assert source._port == 9000
 
-    def test_configure_invalid_port(self):
-        source = ChromaDBRemoteSource()
-        with pytest.raises(ValueError, match="port"):
-            source.configure({"port": "abc"})
+    def test_configure_remote_without_port(self):
+        source = ChromaDBSource()
+        source.configure({"mode": "Remote", "host": "chroma-host"})
+        assert source._mode == "remote"
+        assert source._host == "chroma-host"
+        assert source._port == 8100
 
-    def test_name(self):
-        assert ChromaDBRemoteSource().name() == "ChromaDB (Remote)"
+    def test_configure_remote_default(self):
+        source = ChromaDBSource()
+        source.configure({"mode": "Remote", "host": "localhost:8100"})
+        assert source._mode == "remote"
+        assert source._host == "localhost"
+        assert source._port == 8100
+
+    def test_configure_remote_empty_host_raises(self):
+        source = ChromaDBSource()
+        with pytest.raises(ValueError, match="host is required"):
+            source.configure({"mode": "Remote", "host": ""})
+
+    def test_configure_remote_invalid_port(self):
+        source = ChromaDBSource()
+        with pytest.raises(ValueError, match="port"):
+            source.configure({"mode": "Remote", "host": "localhost:abc"})
+
+    def test_configure_local(self):
+        source = ChromaDBSource()
+        source.configure({"mode": "Local", "path": "/data/chroma"})
+        assert source._mode == "local"
+        assert source._path == "/data/chroma"
+
+    def test_configure_local_empty_path_raises(self):
+        source = ChromaDBSource()
+        with pytest.raises(ValueError, match="path is required"):
+            source.configure({"mode": "Local", "path": ""})
 
 
 class TestChromaDBConnect:
+    def test_connect_remote(self):
+        mock_chromadb_mod = MagicMock()
+        source = ChromaDBSource()
+        source._mode = "remote"
+        source._host = "localhost"
+        source._port = 8100
+
+        with patch.dict(sys.modules, {"chromadb": mock_chromadb_mod}):
+            source.connect()
+
+        mock_chromadb_mod.HttpClient.assert_called_once_with(host="localhost", port=8100)
+        mock_chromadb_mod.HttpClient.return_value.heartbeat.assert_called_once()
+
     def test_connect_local(self):
         mock_chromadb_mod = MagicMock()
-        source = ChromaDBLocalSource()
+        source = ChromaDBSource()
+        source._mode = "local"
         source._path = "/data"
 
         with patch.dict(sys.modules, {"chromadb": mock_chromadb_mod}):
@@ -79,21 +100,10 @@ class TestChromaDBConnect:
         mock_chromadb_mod.PersistentClient.assert_called_once_with(path="/data")
         mock_chromadb_mod.PersistentClient.return_value.heartbeat.assert_called_once()
 
-    def test_connect_remote(self):
-        mock_chromadb_mod = MagicMock()
-        source = ChromaDBRemoteSource()
-        source._host = "localhost"
-        source._port = 8000
-
-        with patch.dict(sys.modules, {"chromadb": mock_chromadb_mod}):
-            source.connect()
-
-        mock_chromadb_mod.HttpClient.assert_called_once_with(host="localhost", port=8000)
-
 
 class TestChromaDBInspect:
     def test_inspect(self):
-        source = ChromaDBLocalSource()
+        source = ChromaDBSource()
         source._client = MagicMock()
 
         collection = MagicMock()
@@ -110,7 +120,7 @@ class TestChromaDBInspect:
 
 class TestChromaDBExtract:
     def test_extract_with_documents(self):
-        source = ChromaDBLocalSource()
+        source = ChromaDBSource()
         source._client = MagicMock()
 
         collection = MagicMock()
@@ -138,7 +148,7 @@ class TestChromaDBExtract:
         assert cursor == "2"
 
     def test_extract_pagination(self):
-        source = ChromaDBRemoteSource()
+        source = ChromaDBSource()
         source._client = MagicMock()
 
         collection = MagicMock()
@@ -162,11 +172,11 @@ class TestChromaDBExtract:
 
         batches = list(source.extract("col", batch_size=2))
         assert len(batches) == 2
-        assert batches[0][1] == "2"  # cursor = offset after first batch
+        assert batches[0][1] == "2"
         assert batches[1][1] == "3"
 
     def test_extract_resume(self):
-        source = ChromaDBLocalSource()
+        source = ChromaDBSource()
         source._client = MagicMock()
 
         collection = MagicMock()
@@ -178,6 +188,5 @@ class TestChromaDBExtract:
         ]
 
         batches = list(source.extract("col", batch_size=10, resume_from="2"))
-        # Should have called get with offset=2
         call_kwargs = collection.get.call_args_list[0][1]
         assert call_kwargs["offset"] == 2

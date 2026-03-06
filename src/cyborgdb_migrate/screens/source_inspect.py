@@ -51,15 +51,27 @@ class SourceInspectScreen(Screen):
             self._indexes = indexes
 
             def update_list():
+                loading.display = False
+                if not indexes:
+                    self.query_one("#index-list", OptionList).display = False
+                    self.query_one("#summary-panel", Static).display = True
+                    self.query_one("#summary-panel", Static).update(
+                        "[red]No indexes found. Please ensure your database contains data.[/red]"
+                    )
+                    return
                 idx_list = self.query_one("#index-list", OptionList)
                 idx_list.clear_options()
                 for name in indexes:
                     idx_list.add_option(Option(name, id=name))
-                loading.display = False
 
             self.app.call_from_thread(update_list)
         except Exception as e:
             self.app.call_from_thread(loading.update, f"Error: {e}")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        """Handle click/enter on an option (works even if already highlighted)."""
+        if event.option_list.id == "index-list" and event.option:
+            self._inspect_index(str(event.option.prompt))
 
     def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
         if event.option_list.id == "index-list" and event.option:
@@ -96,10 +108,12 @@ class SourceInspectScreen(Screen):
 
             self.app.call_from_thread(update_ui)
         except Exception as e:
-            self.app.call_from_thread(
-                self.query_one("#summary-panel", Static).update,
-                f"[red]Error inspecting index: {e}[/red]",
-            )
+            def show_error():
+                panel = self.query_one("#summary-panel", Static)
+                panel.display = True
+                panel.update(f"[red]Error inspecting index: {e}[/red]")
+
+            self.app.call_from_thread(show_error)
 
     def _update_summary(self) -> None:
         info = self._source_info

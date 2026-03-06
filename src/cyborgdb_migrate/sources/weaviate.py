@@ -20,10 +20,10 @@ class WeaviateSource(SourceConnector):
 
     def credential_fields(self) -> list[CredentialField]:
         return [
-            CredentialField(key="host", label="Host URL", default="http://localhost:8080"),
+            CredentialField(key="host", label="Weaviate Host URL", default="http://localhost:8080"),
             CredentialField(
                 key="api_key",
-                label="API Key (optional for Cloud)",
+                label="Weaviate API Key (optional)",
                 is_secret=True,
                 required=False,
             ),

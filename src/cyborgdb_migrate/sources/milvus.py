@@ -24,14 +24,14 @@ class MilvusSource(SourceConnector):
 
     def credential_fields(self) -> list[CredentialField]:
         return [
-            CredentialField(key="uri", label="URI", default="http://localhost:19530"),
+            CredentialField(key="uri", label="Milvus Host URL", default="http://localhost:19530"),
             CredentialField(
                 key="token",
-                label="Token (optional for Zilliz Cloud)",
+                label="Milvus API Token",
                 is_secret=True,
                 required=False,
             ),
-            CredentialField(key="database", label="Database", default="default"),
+            CredentialField(key="database", label="Milvus Database", default="default"),
         ]
 
     def configure(self, credentials: dict[str, str]) -> None:

@@ -20,10 +20,10 @@ class QdrantSource(SourceConnector):
 
     def credential_fields(self) -> list[CredentialField]:
         return [
-            CredentialField(key="host", label="Host URL", default="http://localhost:6333"),
+            CredentialField(key="host", label="Qdrant Host URL", default="http://localhost:6333"),
             CredentialField(
                 key="api_key",
-                label="API Key (optional for Cloud)",
+                label="Qdrant API Key (optional)",
                 is_secret=True,
                 required=False,
             ),

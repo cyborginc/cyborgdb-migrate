@@ -1,15 +1,47 @@
 from __future__ import annotations
 
+import io
+import re
+import sys
 from typing import TYPE_CHECKING
 
+from textual import work
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static
+from textual.widgets import Button, RichLog, Static, TextArea
 
 from cyborgdb_migrate.widgets.step_header import StepHeader
 
 if TYPE_CHECKING:
     from cyborgdb_migrate.models import MigrationState
+
+_DEFAULT_SNIPPET = """\
+from cyborgdb import Client
+
+# 'client' and 'index' are pre-loaded below — no setup needed.
+# These imports are included so you can copy this snippet externally.
+# client = Client("http://localhost:8000", api_key)
+# index = client.load_index("my_index", index_key)
+
+# List some IDs
+ids = index.list_ids()[:5]
+print(f"Sample IDs: {ids}")
+
+# Fetch a vector
+item = index.get(ids=ids[:1], include=["vector", "metadata"])[0]
+print(f"  {item['id']}: dim={len(item.get('vector', []))}")
+print(f"  metadata={item.get('metadata')}")
+
+# Query nearest neighbors
+vec = item.get("vector")
+if vec:
+    hits = index.query(query_vectors=vec, top_k=5)
+    print(f"\\nNearest neighbors:")
+    for h in hits:
+        print(f"  {h['id']}  distance={h.get('distance', '?')}")
+else:
+    print("\\nNo vector returned — try include=['vector']")
+"""
 
 
 class SummaryScreen(Screen):
@@ -22,9 +54,18 @@ class SummaryScreen(Screen):
     def compose(self):
         yield StepHeader(7, "Complete")
         with Vertical(classes="step-content"):
-            yield Static("", id="verification-results")
             yield Static("", id="migration-summary", classes="summary-panel")
-            yield Static("", id="quickstart-code", classes="summary-panel")
+            yield TextArea(
+                _DEFAULT_SNIPPET,
+                language="python",
+                theme="monokai",
+                tab_behavior="indent",
+                id="code-editor",
+            )
+            with Horizontal(id="run-row"):
+                yield Button("Copy", id="copy-btn")
+                yield Button("Run", id="run-btn", variant="success")
+            yield RichLog(id="run-output", wrap=True, markup=True)
         with Horizontal(classes="button-row"):
             yield Button("Done", id="done-btn", variant="primary")
 
@@ -33,19 +74,6 @@ class SummaryScreen(Screen):
         if result is None:
             return
 
-        # Verification results
-        count_ok = result.vectors_migrated >= result.vectors_expected
-        count_icon = "[green]OK[/green]" if count_ok else "[red]FAIL[/red]"
-        spot_icon = "[green]OK[/green]" if result.spot_check_passed else "[red]FAIL[/red]"
-
-        verif = (
-            f"  {count_icon} Count check: "
-            f"{result.vectors_migrated:,} / {result.vectors_expected:,} vectors\n"
-            f"  {spot_icon} Spot check: {result.spot_check_details}"
-        )
-        self.query_one("#verification-results", Static).update(verif)
-
-        # Migration summary
         mins, secs = divmod(int(result.duration_seconds), 60)
         source_name = ""
         source_index = ""
@@ -53,35 +81,109 @@ class SummaryScreen(Screen):
             source_name = self.state.source_info.source_type.title()
             source_index = self.state.source_info.index_or_collection_name
 
+        count_ok = result.vectors_migrated >= result.vectors_expected
+        count_color = "green" if count_ok else "red"
+        spot_color = "green" if result.spot_check_passed else "red"
+
+        # Extract "N/M verified" from spot_check_details
+        spot_match = re.search(r"(\d+)/(\d+) verified", result.spot_check_details)
+        spot_text = (
+            f"Checked: {spot_match.group(1)}/{spot_match.group(2)}"
+            if spot_match
+            else result.spot_check_details
+        )
+
         summary_lines = [
             f"  Source:    {source_name} / {source_index}",
             f"  Dest:     CyborgDB / {result.index_name}",
-            f"  Vectors:  {result.vectors_migrated:,}",
+            f"  Vectors:  [{count_color}]{result.vectors_migrated:,}"
+            f" / {result.vectors_expected:,}[/{count_color}]",
+            f"  Spot:     [{spot_color}]{spot_text}[/{spot_color}]",
             f"  Duration: {mins}m {secs}s",
         ]
         if result.key_file_path:
             summary_lines.append(f"  Key file: {result.key_file_path}")
-        self.query_one("#migration-summary", Static).update("\n".join(summary_lines))
-
-        # Quickstart code
-        code = (
-            'from cyborgdb import Client\n'
-            '\n'
-            'client = Client(\n'
-            '    "http://localhost:8000", api_key\n'
-            ')\n'
-            'index = client.load_index(\n'
-            f'    "{result.index_name}", index_key\n'
-            ')\n'
-            'results = index.query(\n'
-            '    query_vectors=[...], top_k=10\n'
-            ')\n'
+        self.query_one("#migration-summary", Static).update(
+            "\n".join(summary_lines)
         )
-        from rich.syntax import Syntax
 
-        syntax = Syntax(code, "python", theme="monokai", line_numbers=False)
-        self.query_one("#quickstart-code", Static).update(syntax)
+        # Fill in actual connection details in the snippet
+        dest = self.state.cyborgdb_destination
+        base_url = (
+            getattr(dest, "_host", "http://localhost:8000")
+            if dest
+            else "http://localhost:8000"
+        )
+        editor = self.query_one("#code-editor", TextArea)
+        text = editor.text
+        text = text.replace(
+            '# client = Client("http://localhost:8000", api_key)',
+            f'# client = Client("{base_url}", api_key)',
+        )
+        text = text.replace(
+            '# index = client.load_index("my_index", index_key)',
+            f'# index = client.load_index("{result.index_name}", index_key)',
+        )
+        editor.load_text(text)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "done-btn":
             self.app.exit(0)
+        elif event.button.id == "run-btn":
+            self._run_code()
+        elif event.button.id == "copy-btn":
+            self._copy_code()
+
+    def _copy_code(self) -> None:
+        import subprocess
+
+        code = self.query_one("#code-editor", TextArea).text
+        try:
+            subprocess.run(
+                ["pbcopy"], input=code.encode(), check=True,
+            )
+            self.notify("Copied to clipboard")
+        except Exception:
+            self.notify("Copy failed", severity="error")
+
+    @work(thread=True)
+    def _run_code(self) -> None:
+        run_btn = self.query_one("#run-btn", Button)
+        log = self.query_one("#run-output", RichLog)
+
+        self.app.call_from_thread(setattr, run_btn, "disabled", True)
+        self.app.call_from_thread(log.clear)
+
+        code = self.query_one("#code-editor", TextArea).text
+        namespace: dict = {}
+
+        # Inject client and index from the destination
+        dest = self.state.cyborgdb_destination
+        if dest is not None:
+            namespace["client"] = getattr(dest, "_client", None)
+            namespace["index"] = getattr(dest, "_index", None)
+
+        stdout_capture = io.StringIO()
+        stderr_capture = io.StringIO()
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        try:
+            sys.stdout = stdout_capture
+            sys.stderr = stderr_capture
+            exec(code, namespace)  # noqa: S102
+        except Exception as exc:
+            stderr_capture.write(f"{type(exc).__name__}: {exc}\n")
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+        out = stdout_capture.getvalue()
+        err = stderr_capture.getvalue()
+
+        if out:
+            self.app.call_from_thread(log.write, out.rstrip("\n"))
+        if err:
+            self.app.call_from_thread(
+                log.write, f"[red]{err.rstrip(chr(10))}[/red]"
+            )
+
+        self.app.call_from_thread(setattr, run_btn, "disabled", False)

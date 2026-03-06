@@ -18,6 +18,7 @@ class CredentialField:
     required: bool = True
     help_text: str | None = None
     visible_when: dict[str, str] | None = None
+    options: list[str] | None = None  # If set, render as radio buttons
 
 
 class SourceConnector(ABC):

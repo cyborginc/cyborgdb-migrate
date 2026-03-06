@@ -1,4 +1,5 @@
 import argparse
+import base64
 import sys
 
 from cyborgdb_migrate import __version__
@@ -138,8 +139,8 @@ def run_headless(
         if config.index_key:
             index_key = base64.b64decode(config.index_key)
         elif config.key_file:
-            with open(config.key_file, "rb") as f:
-                index_key = f.read()
+            with open(config.key_file) as f:
+                index_key = base64.b64decode(f.read().strip())
         else:
             console.print("[red]No index key provided for existing index[/red]")
             raise SystemExit(1)

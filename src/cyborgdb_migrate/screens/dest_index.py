@@ -10,7 +10,6 @@ from textual.widgets import (
     Button,
     Input,
     Label,
-    LoadingIndicator,
     OptionList,
     RadioButton,
     RadioSet,
@@ -34,6 +33,18 @@ class DestIndexScreen(Screen):
         self.state = state
         self._mode = "create"  # "create" or "existing"
 
+        # Pre-compute index type labels based on vector count
+        count = self.state.source_info.vector_count if self.state.source_info else 0
+        if count < 10_000:
+            self._ivfflat_label = "IVFFlat (recommended for small datasets)"
+            self._ivfpq_label = "IVFPQ"
+        elif count <= 500_000:
+            self._ivfflat_label = f"IVFFlat (recommended for ~{count:,} vectors)"
+            self._ivfpq_label = "IVFPQ"
+        else:
+            self._ivfflat_label = "IVFFlat"
+            self._ivfpq_label = "IVFPQ (recommended for large datasets)"
+
     def compose(self):
         yield StepHeader(5, "Destination Index")
         with Vertical(classes="step-content"):
@@ -52,7 +63,11 @@ class DestIndexScreen(Screen):
                 yield Input(value=default_name, id="index-name-input")
 
                 yield Label("Index type:")
-                yield RadioSet(id="index-type-radio")
+                yield RadioSet(
+                    RadioButton(self._ivfflat_label, value=True, id="type-ivfflat"),
+                    RadioButton(self._ivfpq_label, id="type-ivfpq"),
+                    id="index-type-radio",
+                )
 
                 yield Static("", id="config-summary")
 
@@ -71,7 +86,6 @@ class DestIndexScreen(Screen):
             # Existing index form
             with Vertical(id="existing-form"):
                 yield Label("Select an existing index:")
-                yield LoadingIndicator(id="existing-loading")
                 yield OptionList(id="existing-list")
                 yield Label("Encryption key:")
                 yield Input(
@@ -90,28 +104,6 @@ class DestIndexScreen(Screen):
         self.state.ready_for_step(5)
         self.query_one("#existing-form").display = False
         self.query_one("#own-key-input").display = False
-        self.query_one("#existing-loading").display = False
-        self._setup_index_type_radio()
-
-    def _setup_index_type_radio(self) -> None:
-        """Add index type options with recommendations based on vector count."""
-        radio = self.query_one("#index-type-radio", RadioSet)
-        count = self.state.source_info.vector_count if self.state.source_info else 0
-
-        if count < 10_000:
-            ivfflat_label = "IVFFlat (recommended for small datasets)"
-            ivfpq_label = "IVFPQ"
-        elif count <= 500_000:
-            ivfflat_label = f"IVFFlat (recommended for ~{count:,} vectors)"
-            ivfpq_label = "IVFPQ"
-        else:
-            ivfflat_label = "IVFFlat"
-            ivfpq_label = "IVFPQ (recommended for large datasets)"
-
-        radio.mount(RadioButton(ivfflat_label, value=True, id="type-ivfflat"))
-        radio.mount(RadioButton(ivfpq_label, id="type-ivfpq"))
-        radio.mount(RadioButton("IVF", id="type-ivf"))
-
         self._update_config_summary()
 
     def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
@@ -130,32 +122,17 @@ class DestIndexScreen(Screen):
             pressed = event.pressed
             self.query_one("#own-key-input").display = pressed.id == "own-key"
 
-    @work(thread=True)
-    async def _load_existing_indexes(self) -> None:
-        loading = self.query_one("#existing-loading", LoadingIndicator)
-        self.app.call_from_thread(setattr, loading, "display", True)
-        try:
-            indexes = self.state.cyborgdb_destination.list_indexes()
-
-            def update():
-                lst = self.query_one("#existing-list", OptionList)
-                lst.clear_options()
-                if not indexes:
-                    self.query_one("#error-label", Static).update(
-                        "[yellow]No existing indexes found. Go back and create a new index instead.[/yellow]"
-                    )
-                else:
-                    for name in indexes:
-                        lst.add_option(Option(name, id=name))
-                loading.display = False
-
-            self.app.call_from_thread(update)
-        except Exception as e:
-            self.app.call_from_thread(
-                self.query_one("#error-label", Static).update,
-                f"[red]Error loading indexes: {e}[/red]",
+    def _load_existing_indexes(self) -> None:
+        indexes = self.state.existing_indexes
+        lst = self.query_one("#existing-list", OptionList)
+        lst.clear_options()
+        if not indexes:
+            self.query_one("#error-label", Static).update(
+                "[yellow]No existing indexes found. Go back and create a new index instead.[/yellow]"
             )
-            self.app.call_from_thread(setattr, loading, "display", False)
+        else:
+            for name in indexes:
+                lst.add_option(Option(name, id=name))
 
     def _update_config_summary(self) -> None:
         dim = self.state.source_info.dimension if self.state.source_info else 0
@@ -218,6 +195,12 @@ class DestIndexScreen(Screen):
             generate_key = False
 
         dest = self.state.cyborgdb_destination
+
+        if index_name in self.state.existing_indexes:
+            raise ValueError(
+                f"Index '{index_name}' already exists. "
+                "Choose a different name or use an existing index."
+            )
 
         if generate_key:
             key_bytes, key_path = dest.generate_and_save_key(index_name=index_name)

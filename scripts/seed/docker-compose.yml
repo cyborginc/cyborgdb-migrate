@@ -77,7 +77,7 @@ services:
     container_name: chromadb
     image: chromadb/chroma:1.5.2
     ports:
-      - "8000:8000"
+      - "8100:8000"
     environment:
       ALLOW_RESET: "true"
 
@@ -104,7 +104,7 @@ services:
     container_name: cyborgdb
     image: cyborginc/cyborgdb-service:0.15.0
     ports:
-      - "8100:8000"
+      - "8000:8000"
     environment:
       - CYBORGDB_DB_TYPE=redis
       - CYBORGDB_CONNECTION_STRING=host:redis,port:6379,db:0

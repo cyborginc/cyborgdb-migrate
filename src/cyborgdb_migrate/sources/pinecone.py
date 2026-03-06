@@ -19,7 +19,7 @@ class PineconeSource(SourceConnector):
 
     def credential_fields(self) -> list[CredentialField]:
         return [
-            CredentialField(key="api_key", label="API Key", is_secret=True),
+            CredentialField(key="api_key", label="Pinecone API Key", is_secret=True),
         ]
 
     def configure(self, credentials: dict[str, str]) -> None:

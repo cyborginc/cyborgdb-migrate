@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import stat
@@ -7,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from cyborgdb import Client, IndexIVF, IndexIVFFlat, IndexIVFPQ
+from cyborgdb import Client, IndexIVFFlat, IndexIVFPQ
 
 from cyborgdb_migrate.models import VectorRecord
 
@@ -41,6 +42,7 @@ class CyborgDestination:
     def connect(self, host: str, api_key: str) -> None:
         """Connect and verify health."""
 
+        self._host = host
         self._client = Client(base_url=host, api_key=api_key)
         self._client.get_health()
         logger.info("Connected to CyborgDB at %s", host)
@@ -61,10 +63,8 @@ class CyborgDestination:
         """Create a new encrypted index."""
 
         index_type_lower = index_type.lower()
-        if index_type_lower == "ivfflat":
+        if index_type_lower in ("ivfflat", "ivf"):
             config = IndexIVFFlat(dimension=dimension)
-        elif index_type_lower == "ivf":
-            config = IndexIVF(dimension=dimension)
         elif index_type_lower == "ivfpq":
             n_subquantizers = max(8, dimension // 8)
             config = IndexIVFPQ(dimension=dimension, pq_dim=n_subquantizers, pq_bits=8)
@@ -155,8 +155,8 @@ class CyborgDestination:
         if path.exists():
             raise FileExistsError(f"Key file already exists: {path}")
 
-        path.write_bytes(key)
+        path.write_text(base64.b64encode(key).decode("ascii"))
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)  # 600
 
-        logger.info("Encryption key saved to %s", path)
+        logger.info("Encryption key saved to %s (base64)", path)
         return key, str(path)
