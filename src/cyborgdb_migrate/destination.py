@@ -43,6 +43,7 @@ class CyborgDestination:
         """Connect and verify health."""
 
         self._host = host
+        self._api_key = api_key
         self._client = Client(base_url=host, api_key=api_key)
         self._client.get_health()
         logger.info("Connected to CyborgDB at %s", host)

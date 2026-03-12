@@ -60,14 +60,20 @@ class _ChromaDBBase(SourceConnector):
             if not ids:
                 break
 
-            embeddings = result.get("embeddings") or []
-            metadatas = result.get("metadatas") or []
-            documents = result.get("documents") or []
+            embeddings = result.get("embeddings")
+            if embeddings is None:
+                embeddings = []
+            metadatas = result.get("metadatas")
+            if metadatas is None:
+                metadatas = []
+            documents = result.get("documents")
+            if documents is None:
+                documents = []
 
             batch = []
             for i, vec_id in enumerate(ids):
-                vector = list(embeddings[i]) if i < len(embeddings) and embeddings[i] else []
-                metadata = dict(metadatas[i]) if i < len(metadatas) and metadatas[i] else {}
+                vector = list(embeddings[i]) if i < len(embeddings) and embeddings[i] is not None else []
+                metadata = dict(metadatas[i]) if i < len(metadatas) and metadatas[i] is not None else {}
                 contents = documents[i] if i < len(documents) else None
 
                 batch.append(

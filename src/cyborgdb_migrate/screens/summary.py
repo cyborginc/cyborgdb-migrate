@@ -16,21 +16,25 @@ if TYPE_CHECKING:
     from cyborgdb_migrate.models import MigrationState
 
 _DEFAULT_SNIPPET = """\
+import base64
 from cyborgdb import Client
 
-# 'client' and 'index' are pre-loaded below — no setup needed.
-# These imports are included so you can copy this snippet externally.
-# client = Client("http://localhost:8000", api_key)
-# index = client.load_index("my_index", index_key)
+# Connect to CyborgDB
+client = Client("{base_url}", "{api_key}")
+
+# Load index with encryption key
+with open("{key_file}") as f:
+    index_key = base64.b64decode(f.read())
+index = client.load_index("{index_name}", index_key)
 
 # List some IDs
-ids = index.list_ids()[:5]
-print(f"Sample IDs: {ids}")
+ids = index.list_ids()[:2]
+print(f"Sample IDs: {{ids}}")
 
 # Fetch a vector
 item = index.get(ids=ids[:1], include=["vector", "metadata"])[0]
-print(f"  {item['id']}: dim={len(item.get('vector', []))}")
-print(f"  metadata={item.get('metadata')}")
+print(f"\\n  {{item['id']}}: dim={{len(item.get('vector', []))}}")
+print(f"  metadata={{item.get('metadata')}}")
 
 # Query nearest neighbors
 vec = item.get("vector")
@@ -38,7 +42,7 @@ if vec:
     hits = index.query(query_vectors=vec, top_k=5)
     print(f"\\nNearest neighbors:")
     for h in hits:
-        print(f"  {h['id']}  distance={h.get('distance', '?')}")
+        print(f"  {{h['id']}}  distance={{h.get('distance', '?')}}")
 else:
     print("\\nNo vector returned — try include=['vector']")
 """
@@ -55,6 +59,7 @@ class SummaryScreen(Screen):
         yield StepHeader(7, "Complete")
         with Vertical(classes="step-content"):
             yield Static("", id="migration-summary", classes="summary-panel")
+            yield Static("Migration complete! Try CyborgDB below:")
             yield TextArea(
                 _DEFAULT_SNIPPET,
                 language="python",
@@ -114,17 +119,17 @@ class SummaryScreen(Screen):
             if dest
             else "http://localhost:8000"
         )
+        api_key = getattr(dest, "_api_key", "YOUR_API_KEY")
+        key_file = result.key_file_path or "path/to/key.key"
+
+        snippet = _DEFAULT_SNIPPET.format(
+            base_url=base_url,
+            api_key=api_key or "YOUR_API_KEY",
+            key_file=key_file,
+            index_name=result.index_name,
+        )
         editor = self.query_one("#code-editor", TextArea)
-        text = editor.text
-        text = text.replace(
-            '# client = Client("http://localhost:8000", api_key)',
-            f'# client = Client("{base_url}", api_key)',
-        )
-        text = text.replace(
-            '# index = client.load_index("my_index", index_key)',
-            f'# index = client.load_index("{result.index_name}", index_key)',
-        )
-        editor.load_text(text)
+        editor.load_text(snippet)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "done-btn":

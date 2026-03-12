@@ -8,6 +8,7 @@ from textual import work
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.screen import Screen
+from rich.text import Text
 from textual.widgets import Button, Label, LoadingIndicator, ProgressBar, RichLog, Static
 
 from cyborgdb_migrate.checkpoint import load_checkpoint
@@ -79,7 +80,7 @@ class MigrateScreen(Screen):
                 yield Label("Elapsed:  0s", id="elapsed-label")
                 yield Label("Errors:   0", id="errors-label")
 
-            yield RichLog(id="log", max_lines=500)
+            yield RichLog(id="log", max_lines=500, wrap=True)
 
         with Horizontal(classes="button-row"):
             yield Button("Cancel Migration", id="cancel-btn", variant="error")
@@ -109,7 +110,7 @@ class MigrateScreen(Screen):
         if event.button.id == "cancel-btn":
             self._cancel_event.set()
             log = self.query_one("#log", RichLog)
-            log.write("[yellow]Cancelling migration...[/yellow]")
+            log.write(Text.from_markup("[yellow]Cancelling migration...[/yellow]"))
         elif event.button.id == "resume-btn":
             self.query_one("#resume-panel").display = False
             self._start_migration(resume=True)
@@ -172,7 +173,7 @@ class MigrateScreen(Screen):
 
     def on_migration_complete(self, event: MigrationComplete) -> None:
         log = self.query_one("#log", RichLog)
-        log.write("[green]Migration complete![/green]")
+        log.write(Text.from_markup("[green]Migration complete![/green]"))
 
         from cyborgdb_migrate.screens.summary import SummaryScreen
 
@@ -180,4 +181,4 @@ class MigrateScreen(Screen):
 
     def on_migration_failed(self, event: MigrationFailed) -> None:
         log = self.query_one("#log", RichLog)
-        log.write(f"[red]Fatal error: {event.error}[/red]")
+        log.write(Text.from_markup(f"[red]Fatal error: {event.error}[/red]"))
