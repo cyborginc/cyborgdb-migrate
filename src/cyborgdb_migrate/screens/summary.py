@@ -16,24 +16,23 @@ if TYPE_CHECKING:
     from cyborgdb_migrate.models import MigrationState
 
 _DEFAULT_SNIPPET = """\
-import base64
 from cyborgdb import Client
 
 # Connect to CyborgDB
 client = Client("{base_url}", "{api_key}")
 
 # Load index with encryption key
-with open("{key_file}") as f:
-    index_key = base64.b64decode(f.read())
+index_key = bytes.fromhex("{key_hex}")
 index = client.load_index("{index_name}", index_key)
 
 # List some IDs
 ids = index.list_ids()[:2]
-print(f"Sample IDs: {{ids}}")
+print(f"Sample decrypted IDs: {{ids}}")
 
 # Fetch a vector
 item = index.get(ids=ids[:1], include=["vector", "metadata"])[0]
-print(f"\\n  {{item['id']}}: dim={{len(item.get('vector', []))}}")
+print(f"\\nDecrypted item for ID {{ids[0]}}:")
+print(f"  {{item['id']}}: dim={{len(item.get('vector', []))}}")
 print(f"  metadata={{item.get('metadata')}}")
 
 # Query nearest neighbors
@@ -106,8 +105,6 @@ class SummaryScreen(Screen):
             f"  Spot:     [{spot_color}]{spot_text}[/{spot_color}]",
             f"  Duration: {mins}m {secs}s",
         ]
-        if result.key_file_path:
-            summary_lines.append(f"  Key file: {result.key_file_path}")
         self.query_one("#migration-summary", Static).update(
             "\n".join(summary_lines)
         )
@@ -120,12 +117,12 @@ class SummaryScreen(Screen):
             else "http://localhost:8000"
         )
         api_key = getattr(dest, "_api_key", "YOUR_API_KEY")
-        key_file = result.key_file_path or "path/to/key.key"
+        key_hex = self.state.index_key.hex() if self.state.index_key else "YOUR_KEY_HEX"
 
         snippet = _DEFAULT_SNIPPET.format(
             base_url=base_url,
             api_key=api_key or "YOUR_API_KEY",
-            key_file=key_file,
+            key_hex=key_hex,
             index_name=result.index_name,
         )
         editor = self.query_one("#code-editor", TextArea)

@@ -75,19 +75,7 @@ class TestMigrationResult:
         )
         assert result.vectors_migrated == 1000
         assert result.spot_check_passed is True
-        assert result.key_file_path is None
-
-    def test_with_key_file(self):
-        result = MigrationResult(
-            vectors_migrated=500,
-            vectors_expected=500,
-            duration_seconds=5.0,
-            spot_check_passed=False,
-            spot_check_details="2/10 mismatched",
-            index_name="idx",
-            key_file_path="./keys/my.key",
-        )
-        assert result.key_file_path == "./keys/my.key"
+        assert result.index_name == "my-index"
 
 
 class TestMigrationState:

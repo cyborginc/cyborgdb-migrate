@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 from typing import TYPE_CHECKING
 
 from textual import work
@@ -78,7 +77,7 @@ class DestIndexScreen(Screen):
                     id="key-radio",
                 )
                 yield Input(
-                    placeholder="Base64-encoded 32-byte key",
+                    placeholder="Hex-encoded encryption key",
                     password=True,
                     id="own-key-input",
                 )
@@ -89,7 +88,7 @@ class DestIndexScreen(Screen):
                 yield OptionList(id="existing-list")
                 yield Label("Encryption key:")
                 yield Input(
-                    placeholder="Base64-encoded 32-byte key",
+                    placeholder="Hex-encoded encryption key",
                     password=True,
                     id="existing-key-input",
                 )
@@ -203,14 +202,16 @@ class DestIndexScreen(Screen):
             )
 
         if generate_key:
-            key_bytes, key_path = dest.generate_and_save_key(index_name=index_name)
+            from cyborgdb import Client as CyborgClient
+
+            key_bytes = CyborgClient.generate_key(save=False)
             self.state.index_key = key_bytes
-            self.state.key_file_path = key_path
+            key_hex = key_bytes.hex()
 
             # Show key warning modal
             def show_modal():
                 self.app.push_screen(
-                    KeyWarningModal(key_path),
+                    KeyWarningModal(key_hex),
                     callback=lambda confirmed: self._on_key_confirmed(
                         confirmed, index_name, dim, idx_type, key_bytes, n_lists, metric
                     ),
@@ -218,10 +219,10 @@ class DestIndexScreen(Screen):
 
             self.app.call_from_thread(show_modal)
         else:
-            key_b64 = self.query_one("#own-key-input", Input).value.strip()
-            if not key_b64:
+            key_hex = self.query_one("#own-key-input", Input).value.strip()
+            if not key_hex:
                 raise ValueError("Encryption key is required")
-            key_bytes = base64.b64decode(key_b64)
+            key_bytes = bytes.fromhex(key_hex)
             if len(key_bytes) != 32:
                 raise ValueError("Key must be exactly 32 bytes")
             self.state.index_key = key_bytes
@@ -264,11 +265,11 @@ class DestIndexScreen(Screen):
             raise ValueError("Select an existing index")
 
         index_name = str(existing_list.get_option_at_index(existing_list.highlighted).prompt)
-        key_b64 = self.query_one("#existing-key-input", Input).value.strip()
-        if not key_b64:
+        key_hex = self.query_one("#existing-key-input", Input).value.strip()
+        if not key_hex:
             raise ValueError("Encryption key is required")
 
-        key_bytes = base64.b64decode(key_b64)
+        key_bytes = bytes.fromhex(key_hex)
         dest = self.state.cyborgdb_destination
         dest.load_index(index_name, key_bytes)
 

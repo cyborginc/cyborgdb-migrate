@@ -130,7 +130,7 @@ OptionList {
 }
 
 #run-output {
-    height: 22;
+    height: 12;
     border: round $accent;
     background: $panel;
     padding: 1 2;

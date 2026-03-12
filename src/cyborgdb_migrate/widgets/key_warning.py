@@ -8,20 +8,21 @@ from textual.widgets import Button, Input, Label, Static
 class KeyWarningModal(ModalScreen[bool]):
     """Modal requiring the user to type 'I understand' to acknowledge encryption key warning."""
 
-    def __init__(self, key_file_path: str) -> None:
+    def __init__(self, key_hex: str) -> None:
         super().__init__()
-        self._key_file_path = key_file_path
+        self._key_hex = key_hex
 
     def compose(self):
         with Vertical():
             yield Static("  IMPORTANT: Encryption Key", classes="warning-panel")
             yield Label("")
-            yield Label(f"Your encryption key has been saved to:")
-            yield Label(f"  {self._key_file_path}")
+            yield Label("Your encryption key:")
+            yield Label(f"  {self._key_hex}")
+            yield Button("Copy Key", id="copy-key-btn", variant="default")
             yield Label("")
-            yield Label("SAVE THIS FILE SECURELY.")
+            yield Label("Copy this key now. We will not show it again.")
             yield Label("Without this key, your data is permanently")
-            yield Label("unrecoverable. CyborgDB cannot recover it.")
+            yield Label("unrecoverable.")
             yield Label("")
             yield Label('Type "I understand" to continue:')
             yield Input(placeholder="I understand", id="confirm-input")
@@ -36,7 +37,18 @@ class KeyWarningModal(ModalScreen[bool]):
             btn.disabled = event.value.strip().lower() != "i understand"
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel-btn":
+        if event.button.id == "copy-key-btn":
+            self._copy_key()
+        elif event.button.id == "cancel-btn":
             self.dismiss(False)
         elif event.button.id == "continue-btn":
             self.dismiss(True)
+
+    def _copy_key(self) -> None:
+        import subprocess
+
+        try:
+            subprocess.run(["pbcopy"], input=self._key_hex.encode(), check=True)
+            self.notify("Key copied to clipboard")
+        except Exception:
+            self.notify("Copy failed", severity="error")

@@ -135,7 +135,6 @@ class MigrateScreen(Screen):
                 resume=resume,
             )
 
-            result.key_file_path = self.state.key_file_path
             self.state.migration_result = result
             self.post_message(MigrationComplete(result))
 

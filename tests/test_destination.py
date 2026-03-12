@@ -1,6 +1,3 @@
-import os
-import stat
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -195,31 +192,6 @@ class TestCyborgDestination:
         assert records[0].metadata == {"k": "v"}
         assert records[0].contents == "txt"
         assert records[1].contents is None
-
-    def test_generate_and_save_key(self, tmp_path):
-        dest = self._make_dest()
-        key_path = str(tmp_path / "test.key")
-
-        with patch("cyborgdb_migrate.destination.Client") as mock_cls:
-            mock_cls.generate_key.return_value = b"\x00" * 32
-            key, path = dest.generate_and_save_key(key_path)
-
-        assert key == b"\x00" * 32
-        assert path == key_path
-        assert Path(key_path).read_bytes() == b"\x00" * 32
-        # Check permissions (600)
-        mode = os.stat(key_path).st_mode
-        assert mode & 0o777 == stat.S_IRUSR | stat.S_IWUSR
-
-    def test_generate_and_save_key_exists(self, tmp_path):
-        dest = self._make_dest()
-        key_path = str(tmp_path / "existing.key")
-        Path(key_path).write_bytes(b"old")
-
-        with patch("cyborgdb_migrate.destination.Client") as mock_cls:
-            mock_cls.generate_key.return_value = b"\x00" * 32
-            with pytest.raises(FileExistsError):
-                dest.generate_and_save_key(key_path)
 
     def test_get_index_dimension(self):
         dest = self._make_dest()

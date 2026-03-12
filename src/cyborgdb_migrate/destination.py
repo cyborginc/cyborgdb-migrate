@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import base64
 import logging
-import os
-import stat
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -13,9 +9,6 @@ from cyborgdb import Client, IndexIVFFlat, IndexIVFPQ
 from cyborgdb_migrate.models import VectorRecord
 
 logger = logging.getLogger(__name__)
-
-KEY_DIR = "./cyborgdb-migrate-keys"
-
 
 def compute_n_lists(vector_count: int) -> int:
     """Derive n_lists from vector count using PRD lookup table."""
@@ -37,7 +30,6 @@ class CyborgDestination:
         self._client = None
         self._index = None
         self._index_name: str | None = None
-        self._last_generated_key: bytes | None = None
 
     def connect(self, host: str, api_key: str) -> None:
         """Connect and verify health."""
@@ -137,27 +129,3 @@ class CyborgDestination:
             )
         return records
 
-    def generate_and_save_key(self, key_path: str | None = None, index_name: str | None = None) -> tuple[bytes, str]:
-        """Generate a new key, save to file with chmod 600.
-
-        Returns (key_bytes, file_path). Raises FileExistsError if key file already exists.
-        """
-
-        key = Client.generate_key(save=False)
-        self._last_generated_key = key
-
-        name = index_name or self._index_name or "index"
-        if key_path is None:
-            key_path = os.path.join(KEY_DIR, f"{name}.key")
-
-        path = Path(key_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        if path.exists():
-            raise FileExistsError(f"Key file already exists: {path}")
-
-        path.write_text(base64.b64encode(key).decode("ascii"))
-        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)  # 600
-
-        logger.info("Encryption key saved to %s (base64)", path)
-        return key, str(path)

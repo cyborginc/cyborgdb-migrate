@@ -1,5 +1,4 @@
 import argparse
-import base64
 import sys
 
 from cyborgdb_migrate import __version__
@@ -59,7 +58,6 @@ def run_headless(
     log_file: str,
     quiet: bool,
 ) -> None:
-    import base64
     import logging
     import threading
 
@@ -115,14 +113,11 @@ def run_headless(
 
     # Set up index
     if config.create_index:
-        if config.key_file:
-            key_path = config.key_file
-            key_bytes, _ = destination.generate_and_save_key(key_path)
-            index_key = key_bytes
-        else:
-            from cyborgdb import Client
+        from cyborgdb import Client
 
-            index_key = Client.generate_key(save=False)
+        index_key = Client.generate_key(save=False)
+        if not quiet:
+            console.print(f"Generated encryption key (hex): {index_key.hex()}")
 
         from cyborgdb_migrate.destination import compute_n_lists
 
@@ -137,10 +132,10 @@ def run_headless(
         )
     else:
         if config.index_key:
-            index_key = base64.b64decode(config.index_key)
+            index_key = _decode_key(config.index_key)
         elif config.key_file:
             with open(config.key_file) as f:
-                index_key = base64.b64decode(f.read().strip())
+                index_key = _decode_key(f.read().strip())
         else:
             console.print("[red]No index key provided for existing index[/red]")
             raise SystemExit(1)
@@ -207,3 +202,13 @@ def run_headless(
     if not result.spot_check_passed:
         logger.warning("Spot check failed: %s", result.spot_check_details)
         raise SystemExit(2)
+
+
+def _decode_key(value: str) -> bytes:
+    """Decode a key from hex, falling back to base64 for backwards compatibility."""
+    try:
+        return bytes.fromhex(value)
+    except ValueError:
+        import base64
+
+        return base64.b64decode(value)

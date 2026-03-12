@@ -50,3 +50,4 @@ seed-sources*.toml
 
 # Environment variables
 .env
+scripts/seed/**/*.sqlite3

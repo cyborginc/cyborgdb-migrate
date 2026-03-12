@@ -191,7 +191,6 @@ class MigrationEngine:
             spot_check_passed=spot_passed,
             spot_check_details=spot_details,
             index_name=dest_index,
-            key_file_path=None,
         )
 
     def verify(self) -> tuple[bool, str]:

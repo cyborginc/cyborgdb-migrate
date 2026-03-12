@@ -42,7 +42,6 @@ class MigrationResult:
     spot_check_passed: bool
     spot_check_details: str
     index_name: str
-    key_file_path: str | None = None
 
 
 @dataclass
@@ -65,7 +64,6 @@ class MigrationState:
     # Step 4: destination index
     index_name: str | None = None
     index_key: bytes | None = None
-    key_file_path: str | None = None
     # Options
     batch_size: int = 100
     # Step 6: result
