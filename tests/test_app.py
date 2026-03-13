@@ -1,7 +1,6 @@
 import pytest
 
 from cyborgdb_migrate.app import MigrateApp
-from cyborgdb_migrate.models import MigrationState
 from cyborgdb_migrate.screens.source_select import SourceSelectScreen
 from cyborgdb_migrate.screens.welcome import WelcomeScreen
 from cyborgdb_migrate.widgets.key_warning import KeyWarningModal
@@ -25,7 +24,7 @@ class TestAppStartup:
             assert isinstance(app.screen, SourceSelectScreen)
 
     @pytest.mark.asyncio
-    async def test_source_list_shows_6_sources(self):
+    async def test_source_list_shows_5_sources(self):
         app = MigrateApp()
         async with app.run_test() as pilot:
             await pilot.pause()
@@ -34,12 +33,12 @@ class TestAppStartup:
             from textual.widgets import OptionList
 
             option_list = app.screen.query_one("#source-list", OptionList)
-            assert option_list.option_count == 6
+            assert option_list.option_count == 5
 
     @pytest.mark.asyncio
     async def test_app_has_title(self):
         app = MigrateApp()
-        async with app.run_test() as pilot:
+        async with app.run_test():
             assert app.title == "CyborgDB Migration Wizard"
 
 

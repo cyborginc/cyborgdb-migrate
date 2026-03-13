@@ -84,7 +84,8 @@ class CyborgConnectScreen(Screen):
             self.app.call_from_thread(self._push_next)
         except Exception as e:
             msg = str(e)
-            if "401" in msg or "403" in msg or "unauthorized" in msg.lower() or "forbidden" in msg.lower():
+            lower = msg.lower()
+            if "401" in msg or "403" in msg or "unauthorized" in lower or "forbidden" in lower:
                 msg = "Invalid API key. Please check your key and try again."
             self.app.call_from_thread(
                 self.query_one("#error-label", Static).update,

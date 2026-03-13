@@ -9,16 +9,27 @@ def main():
         prog="cyborgdb-migrate",
         description="Migrate vector data from other databases into CyborgDB",
     )
-    parser.add_argument("--config", metavar="FILE", help="TOML config file for non-interactive mode")
-    parser.add_argument("--resume", action="store_true", help="Resume from checkpoint (non-interactive only)")
-    parser.add_argument("--batch-size", type=int, default=100, help="Vectors per batch (default: 100)")
     parser.add_argument(
-        "--log-file",
-        metavar="FILE",
+        "--config", metavar="FILE",
+        help="TOML config file for non-interactive mode",
+    )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume from checkpoint (non-interactive only)",
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=100,
+        help="Vectors per batch (default: 100)",
+    )
+    parser.add_argument(
+        "--log-file", metavar="FILE",
         default="./cyborgdb-migrate.log",
         help="Log file path (default: ./cyborgdb-migrate.log)",
     )
-    parser.add_argument("--quiet", action="store_true", help="Minimal output (non-interactive only)")
+    parser.add_argument(
+        "--quiet", action="store_true",
+        help="Minimal output (non-interactive only)",
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     args = parser.parse_args()
@@ -193,7 +204,7 @@ def run_headless(
             )
 
     if not quiet:
-        console.print(f"\n[green]Migration complete![/green]")
+        console.print("\n[green]Migration complete![/green]")
         console.print(f"  Vectors: {result.vectors_migrated:,} / {result.vectors_expected:,}")
         console.print(f"  Duration: {result.duration_seconds:.1f}s")
         console.print(f"  Spot check: {'PASSED' if result.spot_check_passed else 'FAILED'}")

@@ -6,6 +6,9 @@ from textual.theme import Theme
 from cyborgdb_migrate.models import MigrationState
 from cyborgdb_migrate.screens.welcome import WelcomeScreen
 
+MIN_WIDTH = 80
+MIN_HEIGHT = 24
+
 CYBORGDB_THEME = Theme(
     name="cyborgdb",
     primary="#217684",

@@ -42,6 +42,8 @@ class CyborgDestination:
 
     def list_indexes(self) -> list[str]:
         """List existing index names."""
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         return self._client.list_indexes()
 
     def create_index(
@@ -54,6 +56,8 @@ class CyborgDestination:
         metric: str | None = None,
     ) -> None:
         """Create a new encrypted index."""
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
 
         index_type_lower = index_type.lower()
         if index_type_lower in ("ivfflat", "ivf"):
@@ -78,22 +82,29 @@ class CyborgDestination:
 
     def load_index(self, name: str, index_key: bytes) -> None:
         """Load an existing index."""
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         self._index = self._client.load_index(index_name=name, index_key=index_key)
         self._index_name = name
         logger.info("Loaded index '%s'", name)
 
     def get_index_dimension(self) -> int | None:
         """Return the dimension of the loaded index, or None if unavailable."""
+        if self._index is None:
+            return None
         try:
             config = self._index.index_config
             return config.get("dimension")
         except Exception:
+            logger.debug("Failed to read index dimension", exc_info=True)
             return None
 
     def upsert_batch(self, records: list[VectorRecord]) -> int:
         """Upsert a batch of records. Returns upserted count."""
         if not records:
             return 0
+        if self._index is None:
+            raise RuntimeError("No index loaded — call create_index() or load_index() first")
 
         items: list[dict[str, Any]] = []
         for r in records:
@@ -112,10 +123,14 @@ class CyborgDestination:
 
     def get_count(self) -> int:
         """Get total vector count in the loaded index."""
+        if self._index is None:
+            raise RuntimeError("No index loaded — call create_index() or load_index() first")
         return len(self._index.list_ids())
 
     def fetch_by_ids(self, ids: list[str]) -> list[VectorRecord]:
         """Fetch vectors by ID for spot-check verification."""
+        if self._index is None:
+            raise RuntimeError("No index loaded — call create_index() or load_index() first")
         results = self._index.get(ids=ids, include=["vector", "contents", "metadata"])
         records = []
         for item in results:

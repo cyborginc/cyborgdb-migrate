@@ -137,6 +137,16 @@ OptionList {
     margin: 0 0 1 0;
 }
 
+/* Terminal size warning */
+.size-warning {
+    display: none;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    content-align: center middle;
+    color: $warning;
+}
+
 /* Key warning modal */
 KeyWarningModal {
     align: center middle;

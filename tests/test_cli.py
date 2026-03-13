@@ -1,9 +1,11 @@
+import base64
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cyborgdb_migrate.models import MigrationResult, SourceInfo, VectorRecord
+from cyborgdb_migrate.cli import _decode_key
+from cyborgdb_migrate.models import MigrationResult, SourceInfo
 
 
 def _write_config(tmp_path: Path, content: str) -> str:
@@ -47,12 +49,31 @@ batch_size = 50
 """
 
 
+class TestDecodeKey:
+    def test_hex_key(self):
+        key_hex = "00" * 32
+        result = _decode_key(key_hex)
+        assert result == b"\x00" * 32
+
+    def test_base64_fallback(self):
+        raw = b"\x01\x02\x03\x04"
+        b64 = base64.b64encode(raw).decode()
+        result = _decode_key(b64)
+        assert result == raw
+
+    def test_invalid_key_raises(self):
+        with pytest.raises(Exception):
+            _decode_key("not-hex-and-not-base64!!!")
+
+
 class TestRunHeadless:
     @patch("cyborgdb.Client")
     @patch("cyborgdb_migrate.engine.MigrationEngine")
     @patch("cyborgdb_migrate.destination.CyborgDestination")
     @patch("cyborgdb_migrate.sources.SOURCE_REGISTRY")
-    def test_happy_path(self, mock_registry, mock_dest_cls, mock_engine_cls, mock_client_cls, tmp_path):
+    def test_happy_path(
+        self, mock_registry, mock_dest_cls, mock_engine_cls, mock_client_cls, tmp_path,
+    ):
         config_path = _write_config(tmp_path, BASIC_CONFIG)
 
         # Mock source
@@ -182,5 +203,8 @@ index_name = "dest"
         from cyborgdb_migrate.cli import run_headless
 
         with pytest.raises(SystemExit) as exc_info:
-            run_headless(config_path, batch_size=100, resume=False, log_file="/dev/null", quiet=True)
+            run_headless(
+                config_path, batch_size=100, resume=False,
+                log_file="/dev/null", quiet=True,
+            )
         assert exc_info.value.code == 1

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from textual.containers import Horizontal, Vertical
+from textual.containers import Vertical
 from textual.widget import Widget
 from textual.widgets import Input, Label, RadioButton, RadioSet
 
@@ -38,10 +38,11 @@ class SourceForm(Vertical):
                 if field.default and field.default in field.options:
                     default_idx = field.options.index(field.default)
 
-                radio_set = RadioSet(
-                    *[RadioButton(opt, value=(i == default_idx)) for i, opt in enumerate(field.options)],
-                    id=f"cred-{field.key}",
-                )
+                buttons = [
+                    RadioButton(opt, value=(i == default_idx))
+                    for i, opt in enumerate(field.options)
+                ]
+                radio_set = RadioSet(*buttons, id=f"cred-{field.key}")
                 self._radio_sets[field.key] = radio_set
                 widgets.append(radio_set)
                 self.mount(radio_set)

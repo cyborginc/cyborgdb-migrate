@@ -6,7 +6,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from textual import work
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, RichLog, Static, TextArea
 
@@ -56,7 +56,7 @@ class SummaryScreen(Screen):
 
     def compose(self):
         yield StepHeader(7, "Complete")
-        with Vertical(classes="step-content"):
+        with VerticalScroll(classes="step-content"):
             yield Static("", id="migration-summary", classes="summary-panel")
             yield Static("Migration complete! Try CyborgDB below:")
             yield TextArea(
@@ -137,16 +137,14 @@ class SummaryScreen(Screen):
             self._copy_code()
 
     def _copy_code(self) -> None:
-        import subprocess
+        from cyborgdb_migrate.clipboard import copy_to_clipboard
 
         code = self.query_one("#code-editor", TextArea).text
         try:
-            subprocess.run(
-                ["pbcopy"], input=code.encode(), check=True,
-            )
+            copy_to_clipboard(code)
             self.notify("Copied to clipboard")
         except Exception:
-            self.notify("Copy failed", severity="error")
+            self.notify("Copy failed — select and copy manually", severity="error")
 
     @work(thread=True)
     def _run_code(self) -> None:

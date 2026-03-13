@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,7 +49,7 @@ def save_checkpoint(data: CheckpointData) -> Path:
         with os.fdopen(fd, "w") as f:
             json.dump(asdict(data), f, indent=2)
         os.replace(tmp_path, path)
-    except BaseException:
+    except Exception:
         # Clean up temp file on failure
         try:
             os.unlink(tmp_path)

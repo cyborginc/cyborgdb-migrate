@@ -1,11 +1,7 @@
 from __future__ import annotations
 
 import threading
-import time
-from unittest.mock import MagicMock, patch
-
-import numpy as np
-import pytest
+from unittest.mock import patch
 
 from cyborgdb_migrate.engine import MigrationEngine, ProgressUpdate
 from cyborgdb_migrate.models import SourceInfo, VectorRecord
@@ -216,7 +212,7 @@ class TestMigrationEngineCheckpoint:
         )
 
         with patch("cyborgdb_migrate.engine.load_checkpoint", return_value=cp):
-            result = engine.run(resume=True)
+            engine.run(resume=True)
 
         # Should have resumed from cursor "1"
         assert source.extract_calls[0]["resume_from"] == "1"
@@ -251,7 +247,7 @@ class TestMigrationEngineVerification:
             batch_size=4,
             spot_check_per_batch=4,
         )
-        result = engine.run()
+        engine.run()
 
         # Corrupt a stored vector
         for rec in dest._stored.values():

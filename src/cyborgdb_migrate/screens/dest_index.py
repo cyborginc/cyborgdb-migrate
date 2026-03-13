@@ -127,7 +127,8 @@ class DestIndexScreen(Screen):
         lst.clear_options()
         if not indexes:
             self.query_one("#error-label", Static).update(
-                "[yellow]No existing indexes found. Go back and create a new index instead.[/yellow]"
+                "[yellow]No existing indexes found. "
+                "Go back and create a new index instead.[/yellow]"
             )
         else:
             for name in indexes:

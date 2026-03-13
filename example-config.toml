@@ -1,0 +1,29 @@
+# cyborgdb-migrate configuration example
+#
+# Environment variables can be referenced as ${VAR_NAME} anywhere.
+# Run with: cyborgdb-migrate --config example-config.toml
+
+[source]
+type = "pinecone"                    # pinecone | qdrant | weaviate | chromadb | milvus
+api_key = "${PINECONE_API_KEY}"
+index = "my-source-index"
+# namespace = "optional-namespace"   # Pinecone namespaces / Milvus partitions
+
+[destination]
+host = "http://localhost:8000"
+api_key = "${CYBORGDB_API_KEY}"
+index_name = "my-cyborgdb-index"
+
+# --- New index (default) ---
+create_index = true
+index_type = "ivfflat"               # ivfflat | ivfpq
+
+# --- Existing index (uncomment to use) ---
+# create_index = false
+# index_key = "hex-encoded-key-here"
+# key_file = "/path/to/keyfile"      # Alternative to index_key
+
+[options]
+batch_size = 200                     # Vectors per batch (default: 100)
+checkpoint_every = 10                # Save checkpoint every N batches
+spot_check_per_batch = 4             # Samples per batch for verification

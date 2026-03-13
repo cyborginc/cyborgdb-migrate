@@ -187,6 +187,6 @@ class TestChromaDBExtract:
             {"ids": [], "embeddings": [], "metadatas": [], "documents": []},
         ]
 
-        batches = list(source.extract("col", batch_size=10, resume_from="2"))
+        list(source.extract("col", batch_size=10, resume_from="2"))
         call_kwargs = collection.get.call_args_list[0][1]
         assert call_kwargs["offset"] == 2

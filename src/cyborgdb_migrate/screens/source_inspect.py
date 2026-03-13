@@ -108,10 +108,12 @@ class SourceInspectScreen(Screen):
 
             self.app.call_from_thread(update_ui)
         except Exception as e:
+            err_msg = str(e)
+
             def show_error():
                 panel = self.query_one("#summary-panel", Static)
                 panel.display = True
-                panel.update(f"[red]Error inspecting index: {e}[/red]")
+                panel.update(f"[red]Error inspecting index: {err_msg}[/red]")
 
             self.app.call_from_thread(show_error)
 

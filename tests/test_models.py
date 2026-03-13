@@ -91,18 +91,18 @@ class TestMigrationState:
 
     def test_ready_for_step_2_fails(self):
         state = MigrationState()
-        with pytest.raises(AssertionError, match="Source connector not configured"):
+        with pytest.raises(ValueError, match="Source connector not configured"):
             state.ready_for_step(2)
 
     def test_ready_for_step_3_fails_no_source(self):
         state = MigrationState()
-        with pytest.raises(AssertionError, match="Source connector not configured"):
+        with pytest.raises(ValueError, match="Source connector not configured"):
             state.ready_for_step(3)
 
     def test_ready_for_step_4_fails_no_info(self):
         state = MigrationState()
         state.source_connector = "mock"  # type: ignore
-        with pytest.raises(AssertionError, match="Source not inspected"):
+        with pytest.raises(ValueError, match="Source not inspected"):
             state.ready_for_step(4)
 
     def test_ready_for_step_5_fails(self):
@@ -111,7 +111,7 @@ class TestMigrationState:
         state.source_info = SourceInfo(
             source_type="test", index_or_collection_name="idx", dimension=128, vector_count=100
         )
-        with pytest.raises(AssertionError, match="CyborgDB not connected"):
+        with pytest.raises(ValueError, match="CyborgDB not connected"):
             state.ready_for_step(5)
 
     def test_ready_for_step_6_fails_no_key(self):
@@ -122,7 +122,7 @@ class TestMigrationState:
         )
         state.cyborgdb_destination = "mock"  # type: ignore
         state.index_name = "dest-index"
-        with pytest.raises(AssertionError, match="Encryption key not set"):
+        with pytest.raises(ValueError, match="Encryption key not set"):
             state.ready_for_step(6)
 
     def test_ready_for_step_6_passes(self):

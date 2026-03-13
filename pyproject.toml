@@ -7,10 +7,24 @@ name = "cyborgdb-migrate"
 version = "0.1.0"
 description = "TUI wizard and CLI for migrating vector data into CyborgDB"
 requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    {name = "Cyborg Inc."},
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "textual>=0.86.0",
-    "tree-sitter",
-    "tree-sitter-python",
     "cyborgdb",
     "numpy>=1.21.0",
     "tomli>=1.1.0;python_version<'3.11'",
@@ -22,6 +36,10 @@ qdrant = ["qdrant-client"]
 weaviate = ["weaviate-client"]
 chromadb = ["chromadb"]
 milvus = ["pymilvus"]
+syntax = [
+    "tree-sitter",
+    "tree-sitter-python",
+]
 all = [
     "pinecone",
     "qdrant-client",
@@ -37,6 +55,11 @@ dev = [
 
 [project.scripts]
 cyborgdb-migrate = "cyborgdb_migrate.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/cyborginc/cyborgdb-migrate"
+Repository = "https://github.com/cyborginc/cyborgdb-migrate"
+Issues = "https://github.com/cyborginc/cyborgdb-migrate/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

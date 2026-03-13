@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from cyborgdb_migrate.config import MigrationConfig, expand_env_vars, load_config
+from cyborgdb_migrate.config import expand_env_vars, load_config
 
 
 class TestExpandEnvVars:

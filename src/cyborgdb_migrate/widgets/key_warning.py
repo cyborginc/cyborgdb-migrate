@@ -45,10 +45,10 @@ class KeyWarningModal(ModalScreen[bool]):
             self.dismiss(True)
 
     def _copy_key(self) -> None:
-        import subprocess
+        from cyborgdb_migrate.clipboard import copy_to_clipboard
 
         try:
-            subprocess.run(["pbcopy"], input=self._key_hex.encode(), check=True)
+            copy_to_clipboard(self._key_hex)
             self.notify("Key copied to clipboard")
         except Exception:
-            self.notify("Copy failed", severity="error")
+            self.notify("Copy failed — copy the key manually", severity="error")

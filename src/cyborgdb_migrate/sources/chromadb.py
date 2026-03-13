@@ -72,8 +72,10 @@ class _ChromaDBBase(SourceConnector):
 
             batch = []
             for i, vec_id in enumerate(ids):
-                vector = list(embeddings[i]) if i < len(embeddings) and embeddings[i] is not None else []
-                metadata = dict(metadatas[i]) if i < len(metadatas) and metadatas[i] is not None else {}
+                has_emb = i < len(embeddings) and embeddings[i] is not None
+                vector = list(embeddings[i]) if has_emb else []
+                has_meta = i < len(metadatas) and metadatas[i] is not None
+                metadata = dict(metadatas[i]) if has_meta else {}
                 contents = documents[i] if i < len(documents) else None
 
                 batch.append(

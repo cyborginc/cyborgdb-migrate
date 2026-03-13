@@ -5,7 +5,7 @@ import random
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable
 
 import numpy as np
@@ -148,7 +148,8 @@ class MigrationEngine:
                     )
                     self._emit_progress(
                         vectors_migrated, total_vectors, batches_completed, total_batches,
-                        errors, start_time, message=f"Checkpoint saved ({batches_completed} batches)",
+                        errors, start_time,
+                        message=f"Checkpoint saved ({batches_completed} batches)",
                     )
                 else:
                     self._emit_progress(
@@ -254,9 +255,11 @@ class MigrationEngine:
         details = f"Count check: {count_msg}. Spot check: {spot_msg}"
         return len(issues) == 0, details
 
+    RETRY_DELAYS_SECONDS = [1, 2, 4]
+
     def _upsert_with_retry(self, batch: list[VectorRecord]) -> int:
         """Upsert with exponential backoff retry."""
-        delays = [1, 2, 4]
+        delays = self.RETRY_DELAYS_SECONDS
         last_error = None
         for attempt in range(len(delays) + 1):
             try:

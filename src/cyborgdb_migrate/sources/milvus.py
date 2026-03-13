@@ -73,13 +73,16 @@ class MilvusSource(SourceConnector):
             field_type = field_info.get("type")
 
             # Check if this is a DataType by value or by type enum
-            type_val = field_type if isinstance(field_type, int) else getattr(field_type, "value", field_type)
+            type_val = (
+                field_type if isinstance(field_type, int)
+                else getattr(field_type, "value", field_type)
+            )
 
             if field_info.get("is_primary", False):
                 pk_field = field_name
 
-            # FLOAT_VECTOR = 101 in pymilvus DataType enum
-            if type_val == 101:
+            FLOAT_VECTOR = 101  # pymilvus DataType enum value
+            if type_val == FLOAT_VECTOR:
                 vector_field = field_name
                 params = field_info.get("params", {})
                 dimension = int(params.get("dim", 0))

@@ -70,7 +70,7 @@ class MigrationState:
     migration_result: MigrationResult | None = None
 
     def ready_for_step(self, step: int) -> None:
-        """Assert that all fields required by the given step are set."""
+        """Validate that all fields required by the given step are set."""
         checks: dict[int, list[tuple[str, str]]] = {
             2: [("source_connector", "Source connector not configured")],
             3: [("source_connector", "Source connector not configured")],
@@ -92,4 +92,5 @@ class MigrationState:
             ],
         }
         for attr, msg in checks.get(step, []):
-            assert getattr(self, attr) is not None, msg
+            if getattr(self, attr) is None:
+                raise ValueError(msg)

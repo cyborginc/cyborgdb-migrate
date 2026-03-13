@@ -36,6 +36,45 @@ class TestComputeNLists:
         assert compute_n_lists(10_000_000) == 4_096
 
 
+class TestCyborgDestinationNotConnected:
+    """Verify RuntimeError when methods are called before connect()."""
+
+    def test_list_indexes_not_connected(self):
+        dest = CyborgDestination()
+        with pytest.raises(RuntimeError, match="Not connected"):
+            dest.list_indexes()
+
+    def test_create_index_not_connected(self):
+        dest = CyborgDestination()
+        with pytest.raises(RuntimeError, match="Not connected"):
+            dest.create_index("idx", 128, "ivfflat", b"k" * 32)
+
+    def test_load_index_not_connected(self):
+        dest = CyborgDestination()
+        with pytest.raises(RuntimeError, match="Not connected"):
+            dest.load_index("idx", b"k" * 32)
+
+    def test_upsert_batch_no_index(self):
+        dest = CyborgDestination()
+        rec = VectorRecord(id="v1", vector=[0.1])
+        with pytest.raises(RuntimeError, match="No index loaded"):
+            dest.upsert_batch([rec])
+
+    def test_get_count_no_index(self):
+        dest = CyborgDestination()
+        with pytest.raises(RuntimeError, match="No index loaded"):
+            dest.get_count()
+
+    def test_fetch_by_ids_no_index(self):
+        dest = CyborgDestination()
+        with pytest.raises(RuntimeError, match="No index loaded"):
+            dest.fetch_by_ids(["v1"])
+
+    def test_get_index_dimension_no_index(self):
+        dest = CyborgDestination()
+        assert dest.get_index_dimension() is None
+
+
 class TestCyborgDestination:
     def _make_dest(self):
         dest = CyborgDestination()
@@ -101,7 +140,7 @@ class TestCyborgDestination:
         # pq_dim should be clamped to min 8
         mock_config_cls.assert_called_once_with(dimension=32, pq_dim=8, pq_bits=8)
 
-    @patch("cyborgdb_migrate.destination.IndexIVF")
+    @patch("cyborgdb_migrate.destination.IndexIVFFlat")
     def test_create_index_ivf(self, mock_config_cls):
         dest = self._make_dest()
         mock_config = MagicMock()
@@ -152,8 +191,10 @@ class TestCyborgDestination:
         items = dest._index.upsert.call_args[0][0]
         assert items[0]["id"] == "v1"
         assert items[1]["id"] == "v2"
-        np.testing.assert_array_almost_equal(items[0]["vector"], np.array([0.1, 0.2], dtype=np.float32))
-        np.testing.assert_array_almost_equal(items[1]["vector"], np.array([0.3, 0.4], dtype=np.float32))
+        expected_0 = np.array([0.1, 0.2], dtype=np.float32)
+        expected_1 = np.array([0.3, 0.4], dtype=np.float32)
+        np.testing.assert_array_almost_equal(items[0]["vector"], expected_0)
+        np.testing.assert_array_almost_equal(items[1]["vector"], expected_1)
         assert items[0]["metadata"] == {"k": "v"}
         assert "metadata" not in items[1]
 

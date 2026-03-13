@@ -4,12 +4,12 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
+from rich.text import Text
 from textual import work
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.screen import Screen
-from rich.text import Text
-from textual.widgets import Button, Label, LoadingIndicator, ProgressBar, RichLog, Static
+from textual.widgets import Button, Label, ProgressBar, RichLog, Static
 
 from cyborgdb_migrate.checkpoint import load_checkpoint
 from cyborgdb_migrate.engine import MigrationEngine, ProgressUpdate
