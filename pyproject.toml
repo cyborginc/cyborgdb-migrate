@@ -4,8 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cyborgdb-migrate"
-version = "0.1.0"
+version = "0.1.1"
 description = "TUI wizard and CLI for migrating vector data into CyborgDB"
+readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
@@ -37,7 +38,7 @@ classifiers = [
 ]
 dependencies = [
     "textual>=0.86.0",
-    "cyborgdb",
+    "cyborgdb>=0.15.0,<1.0.0",
     "numpy>=1.21.0",
     "tomli>=1.1.0;python_version<'3.11'",
 ]
