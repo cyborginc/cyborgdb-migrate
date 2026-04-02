@@ -10,9 +10,8 @@ Supports **Pinecone**, **Qdrant**, **Weaviate**, **ChromaDB**, and **Milvus** as
 
 ## Key Features
 
-- **Interactive TUI** — step-by-step wizard powered by [Textual](https://textual.textualize.io/)
+- **Interactive TUI** — step-by-step wizard powered for migration
 - **Headless CLI** — non-interactive mode for scripts and CI/CD pipelines
-- **Encrypted at rest** — every index is AES-encrypted with a key you control
 - **Checkpoint & resume** — automatically saves progress; resume interrupted migrations
 - **Spot-check verification** — post-migration vector and metadata integrity checks
 - **Double-buffered I/O** — overlaps extraction and upsert for maximum throughput
