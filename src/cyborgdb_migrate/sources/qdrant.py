@@ -48,10 +48,14 @@ class QdrantSource(SourceConnector):
         logger.info("Connected to Qdrant at %s", self._host)
 
     def list_indexes(self) -> list[str]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collections = self._client.get_collections()
         return [c.name for c in collections.collections]
 
     def inspect(self, index_name: str) -> SourceInfo:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         info = self._client.get_collection(index_name)
 
         dimension = info.config.params.vectors.size
@@ -78,6 +82,8 @@ class QdrantSource(SourceConnector):
         namespace: str | None = None,
         resume_from: str | None = None,
     ) -> Iterator[tuple[list[VectorRecord], str | None]]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         offset = resume_from if resume_from else None
 
         while True:

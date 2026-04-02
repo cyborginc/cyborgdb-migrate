@@ -56,9 +56,13 @@ class MilvusSource(SourceConnector):
         logger.info("Connected to Milvus at %s", self._uri)
 
     def list_indexes(self) -> list[str]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         return self._client.list_collections()
 
     def inspect(self, index_name: str) -> SourceInfo:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         desc = self._client.describe_collection(index_name)
 
         # Find vector field and primary key
@@ -144,6 +148,8 @@ class MilvusSource(SourceConnector):
         namespace: str | None = None,
         resume_from: str | None = None,
     ) -> Iterator[tuple[list[VectorRecord], str | None]]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         # Re-inspect to get field names
         info = self.inspect(index_name)
         pk_field = info.extra.get("pk_field", "id")

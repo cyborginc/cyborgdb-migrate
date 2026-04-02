@@ -11,6 +11,18 @@ license = "MIT"
 authors = [
     {name = "Cyborg Inc."},
 ]
+keywords = [
+    "vector-database",
+    "migration",
+    "cyborgdb",
+    "pinecone",
+    "qdrant",
+    "weaviate",
+    "chromadb",
+    "milvus",
+    "embeddings",
+    "tui",
+]
 classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",

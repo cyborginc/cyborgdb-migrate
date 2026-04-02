@@ -37,10 +37,14 @@ class PineconeSource(SourceConnector):
         logger.info("Connected to Pinecone")
 
     def list_indexes(self) -> list[str]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         indexes = self._client.list_indexes()
         return [idx.name for idx in indexes]
 
     def inspect(self, index_name: str) -> SourceInfo:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         index = self._client.Index(index_name)
         stats = index.describe_index_stats()
 
@@ -71,6 +75,8 @@ class PineconeSource(SourceConnector):
         namespace: str | None = None,
         resume_from: str | None = None,
     ) -> Iterator[tuple[list[VectorRecord], str | None]]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         index = self._client.Index(index_name)
         ns = namespace or ""
 

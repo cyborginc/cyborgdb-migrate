@@ -16,10 +16,14 @@ class _ChromaDBBase(SourceConnector):
         self._client = None
 
     def list_indexes(self) -> list[str]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collections = self._client.list_collections()
         return [c if isinstance(c, str) else c.name for c in collections]
 
     def inspect(self, index_name: str) -> SourceInfo:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collection = self._client.get_collection(index_name)
         vector_count = collection.count()
 
@@ -46,6 +50,8 @@ class _ChromaDBBase(SourceConnector):
         namespace: str | None = None,
         resume_from: str | None = None,
     ) -> Iterator[tuple[list[VectorRecord], str | None]]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collection = self._client.get_collection(index_name)
         offset = int(resume_from) if resume_from else 0
 

@@ -59,10 +59,14 @@ class WeaviateSource(SourceConnector):
         logger.info("Connected to Weaviate at %s", self._host)
 
     def list_indexes(self) -> list[str]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collections = self._client.collections.list_all()
         return list(collections.keys())
 
     def inspect(self, index_name: str) -> SourceInfo:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collection = self._client.collections.get(index_name)
 
         # Get count via aggregation
@@ -114,6 +118,8 @@ class WeaviateSource(SourceConnector):
         namespace: str | None = None,
         resume_from: str | None = None,
     ) -> Iterator[tuple[list[VectorRecord], str | None]]:
+        if self._client is None:
+            raise RuntimeError("Not connected — call connect() first")
         collection = self._client.collections.get(index_name)
 
         batch = []
