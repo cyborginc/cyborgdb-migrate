@@ -58,7 +58,9 @@ host = "${CYBORG_HOST}"
 api_key = "${CYBORG_KEY}"
 create_index = true
 index_name = "my-index"
-index_type = "ivfflat"
+kms_name = "aws-kms"
+embedding_model = "text-embedding-3-small"
+storage_precision = "fp16"
 key_file = "./my-key.key"
 
 [options]
@@ -77,7 +79,9 @@ spot_check_per_batch = 8
         assert config.destination_api_key == "ck-456"
         assert config.create_index is True
         assert config.index_name == "my-index"
-        assert config.index_type == "ivfflat"
+        assert config.kms_name == "aws-kms"
+        assert config.embedding_model == "text-embedding-3-small"
+        assert config.storage_precision == "fp16"
         assert config.key_file == "./my-key.key"
         assert config.batch_size == 200
         assert config.checkpoint_every == 5

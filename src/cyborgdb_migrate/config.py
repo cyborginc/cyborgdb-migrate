@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sys
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -57,9 +60,11 @@ class MigrationConfig:
 
     create_index: bool = True
     index_name: str = ""
-    index_type: str | None = None
+    kms_name: str | None = None
+    embedding_model: str | None = None
+    storage_precision: str | None = None
     key_file: str | None = None
-    index_key: str | None = None  # base64-encoded, for existing indexes
+    index_key: str | None = None  # hex-encoded, for existing indexes
 
     batch_size: int = 100
     checkpoint_every: int = 10
@@ -104,7 +109,14 @@ def load_config(path: str) -> MigrationConfig:
     config.index_name = dest.get("index_name", "")
     if not config.index_name:
         raise ValueError("Config missing [destination].index_name")
-    config.index_type = dest.get("index_type")
+    if "index_type" in dest:
+        logger.warning(
+            "[destination].index_type is deprecated and ignored — "
+            "CyborgDB now uses a single DiskIVF index type."
+        )
+    config.kms_name = dest.get("kms_name")
+    config.embedding_model = dest.get("embedding_model")
+    config.storage_precision = dest.get("storage_precision")
     config.key_file = dest.get("key_file")
     config.index_key = dest.get("index_key")
 

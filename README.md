@@ -65,7 +65,7 @@ host = "http://localhost:8000"
 api_key = "${CYBORGDB_API_KEY}"
 create_index = true
 index_name = "my-cyborgdb-index"
-index_type = "ivfflat"
+# kms_name = "aws-kms"            # optional: use a KMS-wrapped key
 
 [options]
 batch_size = 200

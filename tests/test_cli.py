@@ -25,7 +25,6 @@ host = "http://localhost:8000"
 api_key = "ck-test"
 create_index = true
 index_name = "dest-index"
-index_type = "ivfflat"
 
 [options]
 batch_size = 50

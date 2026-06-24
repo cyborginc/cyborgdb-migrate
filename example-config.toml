@@ -16,12 +16,15 @@ index_name = "my-cyborgdb-index"
 
 # --- New index (default) ---
 create_index = true
-index_type = "ivfflat"               # ivfflat | ivfpq
+# kms_name = "aws-kms"               # Use a KMS-wrapped key instead of a generated one
+# embedding_model = "text-embedding-3-small"
+# storage_precision = "fp16"         # fp32 (default) | fp16
 
 # --- Existing index (uncomment to use) ---
 # create_index = false
-# index_key = "hex-encoded-key-here"
+# index_key = "hex-encoded-key-here" # Required for non-KMS indexes
 # key_file = "/path/to/keyfile"      # Alternative to index_key
+# kms_name = "aws-kms"               # For KMS-backed indexes, no key needed
 
 [options]
 batch_size = 200                     # Vectors per batch (default: 100)
