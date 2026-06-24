@@ -124,31 +124,38 @@ def run_headless(
 
     # Set up index
     if config.create_index:
-        from cyborgdb import Client
+        index_key: bytes | None = None
+        if config.kms_name:
+            if not quiet:
+                console.print(f"Using KMS-wrapped key (kms_name={config.kms_name})")
+        else:
+            from cyborgdb import Client
 
-        index_key = Client.generate_key(save=False)
-        if not quiet:
-            console.print(f"Generated encryption key (hex): {index_key.hex()}")
+            index_key = Client.generate_key(save=False)
+            if not quiet:
+                console.print(f"Generated encryption key (hex): {index_key.hex()}")
 
-        from cyborgdb_migrate.destination import compute_n_lists
-
-        n_lists = compute_n_lists(source_info.vector_count)
         destination.create_index(
             name=config.index_name,
             dimension=source_info.dimension,
-            index_type=config.index_type or "ivfflat",
             index_key=index_key,
-            n_lists=n_lists,
+            kms_name=config.kms_name,
             metric=source_info.metric,
+            embedding_model=config.embedding_model,
+            storage_precision=config.storage_precision,
         )
     else:
+        index_key = None
         if config.index_key:
             index_key = _decode_key(config.index_key)
         elif config.key_file:
             with open(config.key_file) as f:
                 index_key = _decode_key(f.read().strip())
-        else:
-            console.print("[red]No index key provided for existing index[/red]")
+        elif not config.kms_name:
+            console.print(
+                "[red]No index key provided for existing index "
+                "(supply index_key, key_file, or kms_name)[/red]"
+            )
             raise SystemExit(1)
         destination.load_index(config.index_name, index_key)
 
