@@ -83,16 +83,34 @@ class TestCyborgDestination:
         dest._index_name = "test-index"
         return dest
 
+    @patch("cyborgdb_migrate.destination.verify_server_version")
     @patch("cyborgdb_migrate.destination.Client")
-    def test_connect(self, mock_client_cls):
+    def test_connect(self, mock_client_cls, mock_verify):
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
 
         dest = CyborgDestination()
         dest.connect("http://localhost:8000", "api-key")
 
+        mock_verify.assert_called_once_with("http://localhost:8000")
         mock_client_cls.assert_called_once_with(base_url="http://localhost:8000", api_key="api-key")
         mock_client.get_health.assert_called_once()
+
+    @patch("cyborgdb_migrate.destination.verify_server_version")
+    @patch("cyborgdb_migrate.destination.Client")
+    def test_connect_aborts_on_version_mismatch(self, mock_client_cls, mock_verify):
+        from cyborgdb_migrate.version_check import VersionMismatch
+
+        mock_verify.side_effect = VersionMismatch(
+            server_version="0.17.0", migrate_version="0.16.2"
+        )
+
+        dest = CyborgDestination()
+        with pytest.raises(VersionMismatch):
+            dest.connect("http://localhost:8000", "api-key")
+
+        # Client must not be created when the version check fails.
+        mock_client_cls.assert_not_called()
 
     def test_list_indexes(self):
         dest = self._make_dest()

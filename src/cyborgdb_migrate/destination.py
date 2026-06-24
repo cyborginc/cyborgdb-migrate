@@ -7,6 +7,7 @@ import numpy as np
 from cyborgdb import Client, IndexIVFFlat, IndexIVFPQ
 
 from cyborgdb_migrate.models import VectorRecord
+from cyborgdb_migrate.version_check import verify_server_version
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,17 @@ class CyborgDestination:
         self._index_name: str | None = None
 
     def connect(self, host: str, api_key: str) -> None:
-        """Connect and verify health."""
+        """Connect and verify health.
+
+        Verifies the server's minor version matches migrate's supported
+        range before opening an authenticated session — fail fast on
+        version mismatch rather than letting a stale migrate quietly
+        produce a wrong-shape destination index.
+        """
 
         self._host = host
         self._api_key = api_key
+        verify_server_version(host)
         self._client = Client(base_url=host, api_key=api_key)
         self._client.get_health()
         logger.info("Connected to CyborgDB at %s", host)
