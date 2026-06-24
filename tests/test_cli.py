@@ -184,6 +184,81 @@ class TestRunHeadless:
             run_headless(config_path, batch_size=50, resume=False, log_file="/dev/null", quiet=True)
         assert exc_info.value.code == 1
 
+    @patch("cyborgdb_migrate.destination.CyborgDestination")
+    @patch("cyborgdb_migrate.sources.SOURCE_REGISTRY")
+    def test_version_mismatch_exits_with_clear_error(
+        self, mock_registry, mock_dest_cls, tmp_path, capsys
+    ):
+        from cyborgdb_migrate.version_check import VersionMismatch
+
+        config_path = _write_config(tmp_path, BASIC_CONFIG)
+
+        mock_source = MagicMock()
+        mock_source.name.return_value = "Pinecone"
+        mock_source.inspect.return_value = SourceInfo(
+            source_type="pinecone",
+            index_or_collection_name="my-index",
+            dimension=128,
+            vector_count=100,
+        )
+        mock_source_cls = MagicMock(return_value=mock_source)
+        mock_registry.items.return_value = [("Pinecone", mock_source_cls)]
+
+        mock_dest = MagicMock()
+        mock_dest.connect.side_effect = VersionMismatch(
+            server_version="0.17.0", migrate_version="0.16.2"
+        )
+        mock_dest_cls.return_value = mock_dest
+
+        from cyborgdb_migrate.cli import run_headless
+
+        with pytest.raises(SystemExit) as exc_info:
+            run_headless(
+                config_path, batch_size=50, resume=False,
+                log_file="/dev/null", quiet=True,
+            )
+        assert exc_info.value.code == 1
+
+        # Source-side state must not have been opened with a destructive operation
+        # before the version check failed.
+        mock_source.connect.assert_called_once()  # connect happens first; that's ok
+        # No engine, no upsert, etc. — destination.connect raised before that path.
+
+    @patch("cyborgdb_migrate.destination.CyborgDestination")
+    @patch("cyborgdb_migrate.sources.SOURCE_REGISTRY")
+    def test_health_unreachable_exits_with_clear_error(
+        self, mock_registry, mock_dest_cls, tmp_path
+    ):
+        from cyborgdb_migrate.version_check import HealthUnreachable
+
+        config_path = _write_config(tmp_path, BASIC_CONFIG)
+
+        mock_source = MagicMock()
+        mock_source.name.return_value = "Pinecone"
+        mock_source.inspect.return_value = SourceInfo(
+            source_type="pinecone",
+            index_or_collection_name="my-index",
+            dimension=128,
+            vector_count=100,
+        )
+        mock_source_cls = MagicMock(return_value=mock_source)
+        mock_registry.items.return_value = [("Pinecone", mock_source_cls)]
+
+        mock_dest = MagicMock()
+        mock_dest.connect.side_effect = HealthUnreachable(
+            host="http://localhost:9999", cause="network error"
+        )
+        mock_dest_cls.return_value = mock_dest
+
+        from cyborgdb_migrate.cli import run_headless
+
+        with pytest.raises(SystemExit) as exc_info:
+            run_headless(
+                config_path, batch_size=50, resume=False,
+                log_file="/dev/null", quiet=True,
+            )
+        assert exc_info.value.code == 1
+
     @patch("cyborgdb_migrate.sources.SOURCE_REGISTRY")
     def test_unknown_source_type_exits(self, mock_registry, tmp_path):
         config_text = """\

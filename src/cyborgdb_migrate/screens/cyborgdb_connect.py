@@ -9,6 +9,7 @@ from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
 from cyborgdb_migrate.destination import CyborgDestination
+from cyborgdb_migrate.version_check import HealthUnreachable, VersionMismatch
 from cyborgdb_migrate.widgets.step_header import StepHeader
 
 if TYPE_CHECKING:
@@ -82,6 +83,14 @@ class CyborgConnectScreen(Screen):
             self.state.existing_indexes = indexes
 
             self.app.call_from_thread(self._push_next)
+        except (VersionMismatch, HealthUnreachable) as e:
+            # Version-compat failure — surface the full diagnostic; it already
+            # names both versions (mismatch) or the host (unreachable) and the
+            # remediation step.
+            self.app.call_from_thread(
+                self.query_one("#error-label", Static).update,
+                f"[red]{e}[/red]",
+            )
         except Exception as e:
             msg = str(e)
             lower = msg.lower()

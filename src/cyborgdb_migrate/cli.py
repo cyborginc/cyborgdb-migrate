@@ -116,9 +116,18 @@ def run_headless(
             f"({source_info.dimension}d, {source_info.vector_count:,} vectors)"
         )
 
-    # Connect to CyborgDB
+    # Connect to CyborgDB (version-compat check fires first; fail fast on mismatch).
+    from cyborgdb_migrate.version_check import HealthUnreachable, VersionMismatch
+
     destination = CyborgDestination()
-    destination.connect(config.destination_host, config.destination_api_key)
+    try:
+        destination.connect(config.destination_host, config.destination_api_key)
+    except VersionMismatch as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise SystemExit(1) from exc
+    except HealthUnreachable as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise SystemExit(1) from exc
     if not quiet:
         console.print("[green]Connected to CyborgDB[/green]")
 
