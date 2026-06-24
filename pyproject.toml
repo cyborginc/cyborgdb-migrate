@@ -65,6 +65,11 @@ dev = [
     "pytest-asyncio",
     "textual-dev",
 ]
+# Smoke-test extras — used by tests/smoke/ in the publish.yml workflow.
+# Keep minimal (pytest only); chromadb client comes from the `chromadb` extra.
+smoke = [
+    "pytest",
+]
 
 [project.scripts]
 cyborgdb-migrate = "cyborgdb_migrate.cli:main"

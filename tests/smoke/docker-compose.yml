@@ -1,0 +1,44 @@
+# Smoke-test docker-compose for cyborgdb-migrate.
+#
+# CYBORGDB_SERVICE_TAG is injected by the publish.yml workflow (or set
+# locally when running the smoke test by hand). Format is "X.Y.Z" — no
+# leading "v" — matching cyborginc/cyborgdb-service tag convention on
+# Docker Hub.
+
+services:
+  cyborgdb-service:
+    image: cyborginc/cyborgdb-service:${CYBORGDB_SERVICE_TAG}
+    container_name: smoke-cyborgdb-service
+    ports:
+      - "8000:8000"
+    environment:
+      # Unauthenticated: smoke test doesn't exercise auth paths.
+      CYBORGDB_SERVICE_ROOT_KEY: ""
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  chromadb:
+    image: chromadb/chroma:0.5.20
+    container_name: smoke-chromadb
+    ports:
+      - "8001:8000"
+    environment:
+      ANONYMIZED_TELEMETRY: "FALSE"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v2/heartbeat')"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
