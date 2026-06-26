@@ -68,7 +68,7 @@ def verify_server_version(
     except ValueError as exc:
         raise HealthUnreachable(host, str(exc)) from exc
 
-        migrate_minor = _parse_minor(__version__)
+    migrate_minor = _parse_minor(__version__)
 
     if server_minor != migrate_minor:
         raise VersionMismatch(
