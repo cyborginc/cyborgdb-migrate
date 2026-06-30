@@ -31,6 +31,15 @@ jobs:
             exit 1
           fi
 
+      - name: Verify tag exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh api "repos/${{ github.repository }}/git/refs/tags/${{ inputs.tag }}" >/dev/null 2>&1; then
+            echo "Error: Tag '${{ inputs.tag }}' does not exist in ${{ github.repository }}"
+            exit 1
+          fi
+
       - name: Checkout at tag
         uses: actions/checkout@v4
         with:
@@ -66,7 +75,7 @@ jobs:
     name: Build and publish to PyPI
     needs: smoke
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: prod
     steps:
       - name: Checkout at tag
         uses: actions/checkout@v4
