@@ -83,7 +83,6 @@ def _write_migrate_config(
             api_key = "smoke-no-auth"
             create_index = true
             index_name = "{DEST_INDEX_NAME}"
-            index_type = "ivfflat"
 
             [options]
             batch_size = 50
