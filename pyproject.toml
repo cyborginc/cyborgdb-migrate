@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cyborgdb-migrate"
-version = "0.1.1"
+version = "0.17.0"
 description = "TUI wizard and CLI for migrating vector data into CyborgDB"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,7 +38,7 @@ classifiers = [
 ]
 dependencies = [
     "textual>=0.86.0",
-    "cyborgdb>=0.15.0,<1.0.0",
+    "cyborgdb>=0.17,<0.18",
     "numpy>=1.21.0",
     "tomli>=1.1.0;python_version<'3.11'",
 ]
@@ -64,6 +64,11 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "textual-dev",
+]
+# Smoke-test extras — used by tests/smoke/ in the publish.yml workflow.
+# Keep minimal (pytest only); chromadb client comes from the `chromadb` extra.
+smoke = [
+    "pytest",
 ]
 
 [project.scripts]

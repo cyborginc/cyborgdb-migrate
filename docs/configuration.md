@@ -25,9 +25,13 @@ See [`example-config.toml`](https://github.com/cyborginc/cyborgdb-migrate/blob/m
 | `api_key` | Yes | CyborgDB API key |
 | `index_name` | Yes | Destination index name |
 | `create_index` | No | `true` (default) to create a new index, `false` to use existing |
-| `index_type` | No | `ivfflat` (default) or `ivfpq` |
-| `index_key` | No | Hex-encoded encryption key (for existing indexes) |
-| `key_file` | No | Path to encryption key file (for existing indexes) |
+| `kms_name` | No | Named KMS registry slot (e.g. `aws-kms`). When set on a new index, the service generates and wraps the key; no `index_key` is supplied. When set on an existing KMS-backed index, no key is required to load it. |
+| `embedding_model` | No | Embedding model name registered on the CyborgDB server |
+| `storage_precision` | No | Stored vector precision (`fp32` default, `fp16`) |
+| `index_key` | No | Hex-encoded encryption key (for existing non-KMS indexes) |
+| `key_file` | No | Path to encryption key file (for existing non-KMS indexes) |
+
+> **Note:** CyborgDB now uses a single index type (DiskIVF). The legacy `index_type` field (`ivfflat`/`ivfpq`) is ignored with a deprecation warning.
 
 ### `[options]`
 

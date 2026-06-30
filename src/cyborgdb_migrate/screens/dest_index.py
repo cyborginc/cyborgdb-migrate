@@ -16,7 +16,6 @@ from textual.widgets import (
 )
 from textual.widgets.option_list import Option
 
-from cyborgdb_migrate.destination import compute_n_lists
 from cyborgdb_migrate.widgets.key_warning import KeyWarningModal
 from cyborgdb_migrate.widgets.step_header import StepHeader
 
@@ -31,18 +30,6 @@ class DestIndexScreen(Screen):
         super().__init__()
         self.state = state
         self._mode = "create"  # "create" or "existing"
-
-        # Pre-compute index type labels based on vector count
-        count = self.state.source_info.vector_count if self.state.source_info else 0
-        if count < 10_000:
-            self._ivfflat_label = "IVFFlat (recommended for small datasets)"
-            self._ivfpq_label = "IVFPQ"
-        elif count <= 500_000:
-            self._ivfflat_label = f"IVFFlat (recommended for ~{count:,} vectors)"
-            self._ivfpq_label = "IVFPQ"
-        else:
-            self._ivfflat_label = "IVFFlat"
-            self._ivfpq_label = "IVFPQ (recommended for large datasets)"
 
     def compose(self):
         yield StepHeader(5, "Destination Index")
@@ -60,13 +47,6 @@ class DestIndexScreen(Screen):
                 if self.state.source_info:
                     default_name = self.state.source_info.index_or_collection_name
                 yield Input(value=default_name, id="index-name-input")
-
-                yield Label("Index type:")
-                yield RadioSet(
-                    RadioButton(self._ivfflat_label, value=True, id="type-ivfflat"),
-                    RadioButton(self._ivfpq_label, id="type-ivfpq"),
-                    id="index-type-radio",
-                )
 
                 yield Static("", id="config-summary")
 
@@ -115,9 +95,7 @@ class DestIndexScreen(Screen):
                 self._load_existing_indexes()
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        if event.radio_set.id == "index-type-radio":
-            self._update_config_summary()
-        elif event.radio_set.id == "key-radio":
+        if event.radio_set.id == "key-radio":
             pressed = event.pressed
             self.query_one("#own-key-input").display = pressed.id == "own-key"
 
@@ -137,26 +115,8 @@ class DestIndexScreen(Screen):
     def _update_config_summary(self) -> None:
         dim = self.state.source_info.dimension if self.state.source_info else 0
         count = self.state.source_info.vector_count if self.state.source_info else 0
-        n_lists = compute_n_lists(count)
-
-        # Determine selected type
-        idx_type = self._get_selected_index_type()
-        summary = f"Index config: {idx_type.upper()}, dimension={dim}, n_lists={n_lists}"
-        if idx_type == "ivfpq":
-            pq_dim = max(8, dim // 8)
-            summary += f", pq_dim={pq_dim}, pq_bits=8"
-
+        summary = f"Index config: DiskIVF, dimension={dim}, vectors={count:,}"
         self.query_one("#config-summary", Static).update(summary)
-
-    def _get_selected_index_type(self) -> str:
-        radio = self.query_one("#index-type-radio", RadioSet)
-        if radio.pressed_button:
-            btn_id = radio.pressed_button.id or ""
-            if "ivfpq" in btn_id:
-                return "ivfpq"
-            if "ivf" in btn_id and "flat" not in btn_id:
-                return "ivf"
-        return "ivfflat"
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "back-btn":
@@ -182,10 +142,7 @@ class DestIndexScreen(Screen):
         if not index_name:
             raise ValueError("Index name is required")
 
-        idx_type = self._get_selected_index_type()
         dim = self.state.source_info.dimension
-        count = self.state.source_info.vector_count
-        n_lists = compute_n_lists(count)
         metric = self.state.source_info.metric
 
         # Determine key
@@ -214,7 +171,7 @@ class DestIndexScreen(Screen):
                 self.app.push_screen(
                     KeyWarningModal(key_hex),
                     callback=lambda confirmed: self._on_key_confirmed(
-                        confirmed, index_name, dim, idx_type, key_bytes, n_lists, metric
+                        confirmed, index_name, dim, key_bytes, metric
                     ),
                 )
 
@@ -231,9 +188,7 @@ class DestIndexScreen(Screen):
             dest.create_index(
                 name=index_name,
                 dimension=dim,
-                index_type=idx_type,
                 index_key=key_bytes,
-                n_lists=n_lists,
                 metric=metric,
             )
             self.state.index_name = index_name
@@ -241,7 +196,7 @@ class DestIndexScreen(Screen):
 
     def _on_key_confirmed(
         self, confirmed: bool, index_name: str, dim: int,
-        idx_type: str, key_bytes: bytes, n_lists: int, metric: str | None
+        key_bytes: bytes, metric: str | None
     ) -> None:
         if not confirmed:
             return
@@ -250,9 +205,7 @@ class DestIndexScreen(Screen):
             self.state.cyborgdb_destination.create_index(
                 name=index_name,
                 dimension=dim,
-                index_type=idx_type,
                 index_key=key_bytes,
-                n_lists=n_lists,
                 metric=metric,
             )
             self.state.index_name = index_name

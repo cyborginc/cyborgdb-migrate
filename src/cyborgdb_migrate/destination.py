@@ -4,23 +4,12 @@ import logging
 from typing import Any
 
 import numpy as np
-from cyborgdb import Client, IndexIVFFlat, IndexIVFPQ
+from cyborgdb import Client
 
 from cyborgdb_migrate.models import VectorRecord
+from cyborgdb_migrate.version_check import verify_server_version
 
 logger = logging.getLogger(__name__)
-
-def compute_n_lists(vector_count: int) -> int:
-    """Derive n_lists from vector count using PRD lookup table."""
-    if vector_count < 1_000:
-        return 32
-    if vector_count < 10_000:
-        return 128
-    if vector_count < 100_000:
-        return 512
-    if vector_count < 1_000_000:
-        return 1_024
-    return 4_096
 
 
 class CyborgDestination:
@@ -32,10 +21,17 @@ class CyborgDestination:
         self._index_name: str | None = None
 
     def connect(self, host: str, api_key: str) -> None:
-        """Connect and verify health."""
+        """Connect and verify health.
+
+        Verifies the server's minor version matches migrate's supported
+        range before opening an authenticated session — fail fast on
+        version mismatch rather than letting a stale migrate quietly
+        produce a wrong-shape destination index.
+        """
 
         self._host = host
         self._api_key = api_key
+        verify_server_version(host)
         self._client = Client(base_url=host, api_key=api_key)
         self._client.get_health()
         logger.info("Connected to CyborgDB at %s", host)
@@ -50,41 +46,48 @@ class CyborgDestination:
         self,
         name: str,
         dimension: int,
-        index_type: str,
-        index_key: bytes,
-        n_lists: int = 1024,
+        index_key: bytes | None = None,
+        kms_name: str | None = None,
         metric: str | None = None,
+        embedding_model: str | None = None,
+        storage_precision: str | None = None,
     ) -> None:
-        """Create a new encrypted index."""
+        """Create a new encrypted DiskIVF index.
+
+        Provide exactly one of ``index_key`` or ``kms_name``.
+        """
         if self._client is None:
             raise RuntimeError("Not connected — call connect() first")
-
-        index_type_lower = index_type.lower()
-        if index_type_lower in ("ivfflat", "ivf"):
-            config = IndexIVFFlat(dimension=dimension)
-        elif index_type_lower == "ivfpq":
-            n_subquantizers = max(8, dimension // 8)
-            config = IndexIVFPQ(dimension=dimension, pq_dim=n_subquantizers, pq_bits=8)
-        else:
-            raise ValueError(f"Unknown index type: {index_type}")
+        if index_key is None and kms_name is None:
+            raise ValueError("create_index requires index_key or kms_name")
 
         kwargs: dict[str, Any] = {
             "index_name": name,
-            "index_key": index_key,
-            "index_config": config,
+            "dimension": dimension,
         }
+        if index_key is not None:
+            kwargs["index_key"] = index_key
+        if kms_name is not None:
+            kwargs["kms_name"] = kms_name
         if metric:
             kwargs["metric"] = metric
+        if embedding_model:
+            kwargs["embedding_model"] = embedding_model
+        if storage_precision:
+            kwargs["storage_precision"] = storage_precision
 
         self._index = self._client.create_index(**kwargs)
         self._index_name = name
-        logger.info("Created index '%s' (type=%s, dim=%d)", name, index_type, dimension)
+        logger.info("Created index '%s' (dim=%d)", name, dimension)
 
-    def load_index(self, name: str, index_key: bytes) -> None:
-        """Load an existing index."""
+    def load_index(self, name: str, index_key: bytes | None = None) -> None:
+        """Load an existing index. ``index_key`` is required for non-KMS indexes."""
         if self._client is None:
             raise RuntimeError("Not connected — call connect() first")
-        self._index = self._client.load_index(index_name=name, index_key=index_key)
+        kwargs: dict[str, Any] = {"index_name": name}
+        if index_key is not None:
+            kwargs["index_key"] = index_key
+        self._index = self._client.load_index(**kwargs)
         self._index_name = name
         logger.info("Loaded index '%s'", name)
 
@@ -143,4 +146,3 @@ class CyborgDestination:
                 )
             )
         return records
-
