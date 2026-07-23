@@ -1,8 +1,15 @@
-# Exact pins for the smoke test ONLY (not the shipped wheel).
+# Exact client pins for the smoke test ONLY (not the shipped wheel — the wheel
+# keeps loose ranges so it composes with the user's own server).
 #
-# The ChromaDB Python client MUST match the chromadb/chroma server image tag in
-# docker-compose.yml — a client/server major skew makes create_collection fail
-# server-side with KeyError('_type'). Keep this version and the compose image
-# tag identical. Dependabot bumps them via separate PRs (pip + docker); the
-# smoke test is what proves they still agree.
-chromadb==1.5.9
+# Each client MUST match the corresponding server image tag in
+# docker-compose.yml. A client/server skew is precisely the failure class these
+# smoke tests exist to catch (e.g. chromadb 1.x client vs 0.5 server fails
+# create_collection server-side with KeyError('_type')). When Dependabot bumps
+# one side, bump the other to the same version.
+#
+#   client (here)            server image (docker-compose.yml)
+#   ---------------------    ---------------------------------
+chromadb==1.5.9            # chromadb/chroma:1.5.9
+qdrant-client==1.15.1     # qdrant/qdrant:v1.15.4 (client 1.15.x ↔ server 1.15.x)
+weaviate-client==4.19.2   # cr.weaviate.io/semitechnologies/weaviate:1.28.4
+pymilvus==2.6.9           # milvusdb/milvus:v2.6.0

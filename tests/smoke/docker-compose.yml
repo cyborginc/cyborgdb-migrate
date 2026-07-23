@@ -1,9 +1,17 @@
-# Smoke-test docker-compose for cyborgdb-migrate.
+# Smoke-test stack for cyborgdb-migrate.
 #
-# CYBORGDB_SERVICE_TAG is injected by the publish.yml workflow (or set
-# locally when running the smoke test by hand). Format is "X.Y.Z" — no
-# leading "v" — matching cyborginc/cyborgdb-service tag convention on
-# Docker Hub.
+# Brings up cyborgdb-service (the migration destination) plus one container
+# per supported source database. Each round-trip test seeds its source, runs
+# migrate headless, and verifies the destination.
+#
+# CYBORGDB_SERVICE_TAG is injected by CI (or set locally). Format "X.Y.Z" — no
+# leading "v" — matching cyborginc/cyborgdb-service tags on Docker Hub.
+#
+# NO in-container healthchecks: the 1.x chromadb image (and others) ship no
+# python/curl/wget, so a container-side HTTP probe can't run. Readiness is
+# polled from the host by conftest.py against each service's mapped port. The
+# client library pins in constraints.txt MUST stay matched to these image tags
+# (a client/server skew is exactly what these tests exist to catch).
 
 services:
   cyborgdb-service:
@@ -14,33 +22,71 @@ services:
     environment:
       # Unauthenticated: smoke test doesn't exercise auth paths.
       CYBORGDB_SERVICE_ROOT_KEY: ""
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"
-      interval: 3s
-      timeout: 5s
-      retries: 20
-      start_period: 5s
+
+  # --- Sources -------------------------------------------------------------
 
   chromadb:
-    # Keep this tag identical to chromadb== in constraints.txt (client/server
-    # must match — a skew fails create_collection with KeyError('_type')).
+    # Keep this tag identical to chromadb== in constraints.txt.
     image: chromadb/chroma:1.5.9
     container_name: smoke-chromadb
     ports:
+      # host 8001 → container 8000 (8000 is taken by cyborgdb-service).
       - "8001:8000"
     environment:
       ANONYMIZED_TELEMETRY: "FALSE"
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v2/heartbeat')"
-      interval: 3s
-      timeout: 5s
-      retries: 20
-      start_period: 5s
+
+  qdrant:
+    # Keep this tag's version matched to qdrant-client== in constraints.txt
+    # (qdrant warns when client/server differ by more than one minor).
+    image: qdrant/qdrant:v1.15.4
+    container_name: smoke-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+
+  weaviate:
+    # Keep compatible with weaviate-client== in constraints.txt.
+    image: cr.weaviate.io/semitechnologies/weaviate:1.28.4
+    container_name: smoke-weaviate
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      QUERY_DEFAULTS_LIMIT: "25"
+
+  # Milvus standalone needs its own etcd + minio (per the upstream compose).
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.16
+    container_name: smoke-milvus-etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: etcd -advertise-client-urls=http://milvus-etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: smoke-milvus-minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data
+
+  milvus:
+    # Keep this tag's version matched to pymilvus== in constraints.txt.
+    image: milvusdb/milvus:v2.6.0
+    container_name: smoke-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - milvus-etcd
+      - milvus-minio

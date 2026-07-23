@@ -1,8 +1,11 @@
 name: CI
 
-# Publishing is owned by .github/workflows/publish.yml (workflow_dispatch,
-# smoke-test gated). Tag pushes here run lint + test only; the engineer
-# dispatches publish.yml separately after tagging.
+# One workflow owns lint, test, smoke, and publish.
+#   - push to main / any PR : lint + test + smoke
+#   - push of a vX.Y.Z tag  : lint + test + smoke, then publish (gated below)
+# The smoke job round-trips real source databases into a real cyborgdb-service,
+# so a broken source client, a client/server version skew, or a destination
+# regression is caught on the PR that introduces it — not at release time.
 
 on:
   push:
@@ -18,8 +21,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install ruff
@@ -31,9 +34,91 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev,all]"
       - run: pytest tests/ --ignore=tests/smoke
+
+  smoke:
+    name: Source DBs → cyborgdb-service smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Compute cyborgdb-service tag from pyproject version
+        id: service-tag
+        run: |
+          # migrate X.Y.Z targets cyborgdb-service X.Y.Z (Docker Hub tags omit
+          # the leading v). On a release tag pyproject == tag (enforced in the
+          # publish job), so deriving from pyproject is correct on PRs, main,
+          # and tags alike.
+          ver=$(grep '^version' pyproject.toml | head -1 | sed -E 's/version *= *"([^"]+)"/\1/')
+          echo "tag=${ver}" >> "$GITHUB_OUTPUT"
+          echo "Pinning cyborgdb-service to: ${ver}"
+
+      - name: Install migrate + all source clients (pinned to match server images)
+        run: |
+          pip install -c tests/smoke/constraints.txt \
+            -e ".[smoke,chromadb,qdrant,weaviate,milvus,pinecone]"
+
+      - name: Run smoke tests
+        env:
+          CYBORGDB_SERVICE_TAG: ${{ steps.service-tag.outputs.tag }}
+        run: |
+          pytest tests/smoke/ -v --tb=short
+
+  publish:
+    name: Build and publish to PyPI
+    needs: [lint, test, smoke]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      id-token: write    # PyPI trusted publishing via OIDC
+      contents: write    # creating the GitHub release
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Validate tag format and match to pyproject version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: tag '$tag' must be vX.Y.Z"
+            exit 1
+          fi
+          tag_no_v="${tag#v}"
+          pyproject_version=$(grep '^version' pyproject.toml | head -1 | sed -E 's/version *= *"([^"]+)"/\1/')
+          if [ "$tag_no_v" != "$pyproject_version" ]; then
+            echo "Error: tag '$tag' does not match pyproject.toml version '$pyproject_version'"
+            exit 1
+          fi
+
+      - name: Build wheel and sdist
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: false
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
