@@ -36,29 +36,36 @@ classifiers = [
     "Topic :: Database",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+# Runtime deps are capped at the next known-incompatible major so a surprise
+# upstream major release can't silently break us. Dependabot proposes raising
+# these caps; the CI + smoke test gate the bumps. See "Dependency policy" in
+# the README.
 dependencies = [
-    "textual>=0.86.0",
+    "textual>=0.86.0,<9",
     "cyborgdb>=0.17,<0.18",
-    "numpy>=1.21.0",
+    "numpy>=1.21.0,<3",
     "tomli>=1.1.0;python_version<'3.11'",
 ]
 
+# Source-connector extras. These clients talk to the user's OWN running server,
+# so they are ranges (compatible with the server the user already runs), never
+# exact pins. Upper bounds cap the next major; Dependabot raises them.
 [project.optional-dependencies]
-pinecone = ["pinecone"]
-qdrant = ["qdrant-client"]
-weaviate = ["weaviate-client"]
-chromadb = ["chromadb"]
-milvus = ["pymilvus"]
+pinecone = ["pinecone>=5,<10"]
+qdrant = ["qdrant-client>=1.7,<2"]
+weaviate = ["weaviate-client>=4,<5"]
+chromadb = ["chromadb>=0.5,<2"]
+milvus = ["pymilvus>=2.3,<4"]
 syntax = [
     "tree-sitter",
     "tree-sitter-python",
 ]
 all = [
-    "pinecone",
-    "qdrant-client",
-    "weaviate-client",
-    "chromadb",
-    "pymilvus",
+    "pinecone>=5,<10",
+    "qdrant-client>=1.7,<2",
+    "weaviate-client>=4,<5",
+    "chromadb>=0.5,<2",
+    "pymilvus>=2.3,<4",
 ]
 dev = [
     "pytest",
