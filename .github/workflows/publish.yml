@@ -63,7 +63,10 @@ jobs:
 
       - name: Install migrate and smoke dependencies
         run: |
-          pip install -e ".[smoke,chromadb]"
+          # -c pins the chromadb client to the version matching the
+          # chromadb/chroma image in tests/smoke/docker-compose.yml. The wheel's
+          # own chromadb range stays loose; this constraint is smoke-test only.
+          pip install -c tests/smoke/constraints.txt -e ".[smoke,chromadb]"
 
       - name: Run smoke test
         env:

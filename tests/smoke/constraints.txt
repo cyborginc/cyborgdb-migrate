@@ -1,0 +1,8 @@
+# Exact pins for the smoke test ONLY (not the shipped wheel).
+#
+# The ChromaDB Python client MUST match the chromadb/chroma server image tag in
+# docker-compose.yml — a client/server major skew makes create_collection fail
+# server-side with KeyError('_type'). Keep this version and the compose image
+# tag identical. Dependabot bumps them via separate PRs (pip + docker); the
+# smoke test is what proves they still agree.
+chromadb==1.5.9
