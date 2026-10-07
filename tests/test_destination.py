@@ -216,15 +216,15 @@ class TestCyborgDestination:
 
     def test_get_index_dimension(self):
         dest = self._make_dest()
-        dest._index.index_config = {"dimension": 768, "type": "disk_ivf"}
+        dest._index.dimension = 768
         assert dest.get_index_dimension() == 768
 
-    def test_get_index_dimension_missing(self):
+    def test_get_index_dimension_unset(self):
         dest = self._make_dest()
-        dest._index.index_config = {"type": "disk_ivf"}
+        dest._index.dimension = 0
         assert dest.get_index_dimension() is None
 
     def test_get_index_dimension_error(self):
         dest = self._make_dest()
-        type(dest._index).index_config = property(lambda self: (_ for _ in ()).throw(RuntimeError))
+        type(dest._index).dimension = property(lambda self: (_ for _ in ()).throw(RuntimeError))
         assert dest.get_index_dimension() is None

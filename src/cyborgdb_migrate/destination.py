@@ -92,12 +92,16 @@ class CyborgDestination:
         logger.info("Loaded index '%s'", name)
 
     def get_index_dimension(self) -> int | None:
-        """Return the dimension of the loaded index, or None if unavailable."""
+        """Return the dimension of the loaded index, or None if unavailable.
+
+        The SDK reports 0 for an index whose dimension isn't set yet
+        (created without an explicit dimension, nothing upserted) — treat
+        that as unavailable rather than a real dimension.
+        """
         if self._index is None:
             return None
         try:
-            config = self._index.index_config
-            return config.get("dimension")
+            return self._index.dimension or None
         except Exception:
             logger.debug("Failed to read index dimension", exc_info=True)
             return None

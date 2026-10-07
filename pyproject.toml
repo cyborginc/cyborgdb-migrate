@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cyborgdb-migrate"
-version = "0.17.0"
+version = "0.18.0"
 description = "TUI wizard and CLI for migrating vector data into CyborgDB"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,7 +42,7 @@ classifiers = [
 # the README.
 dependencies = [
     "textual>=0.86.0,<9",
-    "cyborgdb>=0.17,<0.18",
+    "cyborgdb>=0.18,<0.19",
     "numpy>=1.21.0,<3",
     "tomli>=1.1.0;python_version<'3.11'",
 ]
