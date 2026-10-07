@@ -199,3 +199,80 @@ index_key = "${IDX_KEY}"
         assert config.create_index is False
         assert config.index_key == "base64encodedkey=="
         assert config.source_credentials == {"mode": "local", "path": "/data/chroma"}
+
+
+class TestBm25Config:
+    def _write_toml(self, tmp_path, content: str):
+        path = tmp_path / "config.toml"
+        path.write_text(content)
+        return str(path)
+
+    _BASE = """
+[source]
+type = "pinecone"
+api_key = "pk"
+index = "src"
+
+[destination]
+host = "http://localhost:8000"
+api_key = "ck"
+index_name = "dst"
+"""
+
+    def test_text_fields_and_bm25(self, tmp_path):
+        path = self._write_toml(
+            tmp_path,
+            self._BASE
+            + """
+text_fields = ["title", "body"]
+bm25_k1 = 1.4
+bm25_b = 0.6
+""",
+        )
+        config = load_config(path)
+        assert config.text_fields == ["title", "body"]
+        assert config.bm25_k1 == 1.4
+        assert config.bm25_b == 0.6
+
+    def test_metadata_schema_table(self, tmp_path):
+        path = self._write_toml(
+            tmp_path,
+            self._BASE
+            + """
+[destination.metadata_schema]
+title = { filterable = true, pattern = true }
+body = { full_text = true }
+""",
+        )
+        config = load_config(path)
+        assert config.metadata_schema == {
+            "title": {"filterable": True, "pattern": True},
+            "body": {"full_text": True},
+        }
+
+    def test_bm25_tuning_requires_full_text_field(self, tmp_path):
+        path = self._write_toml(tmp_path, self._BASE + "bm25_k1 = 1.4\n")
+        with pytest.raises(ValueError, match="full-text field"):
+            load_config(path)
+
+    def test_bm25_tuning_allowed_with_schema_full_text(self, tmp_path):
+        path = self._write_toml(
+            tmp_path,
+            self._BASE
+            + """
+bm25_b = 0.5
+
+[destination.metadata_schema]
+body = { full_text = true }
+""",
+        )
+        config = load_config(path)
+        assert config.bm25_b == 0.5
+
+    def test_unset_defaults_to_none(self, tmp_path):
+        path = self._write_toml(tmp_path, self._BASE)
+        config = load_config(path)
+        assert config.metadata_schema is None
+        assert config.text_fields is None
+        assert config.bm25_k1 is None
+        assert config.bm25_b is None

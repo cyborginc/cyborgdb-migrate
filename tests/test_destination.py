@@ -228,3 +228,43 @@ class TestCyborgDestination:
         dest = self._make_dest()
         type(dest._index).dimension = property(lambda self: (_ for _ in ()).throw(RuntimeError))
         assert dest.get_index_dimension() is None
+
+
+class TestCyborgDestinationBm25Passthrough:
+    def _make_dest(self):
+        dest = CyborgDestination()
+        dest._client = MagicMock()
+        dest._index = MagicMock()
+        dest._index_name = "test-index"
+        return dest
+
+    def test_create_index_passes_bm25_and_schema(self):
+        dest = self._make_dest()
+        dest._client.create_index.return_value = MagicMock()
+
+        schema = {"title": {"filterable": True, "pattern": True}}
+        dest.create_index(
+            "my-idx",
+            128,
+            index_key=b"k" * 32,
+            metadata_schema=schema,
+            text_fields=["title", "body"],
+            bm25_k1=1.4,
+            bm25_b=0.6,
+        )
+
+        call_kwargs = dest._client.create_index.call_args[1]
+        assert call_kwargs["metadata_schema"] == schema
+        assert call_kwargs["text_fields"] == ["title", "body"]
+        assert call_kwargs["bm25_k1"] == 1.4
+        assert call_kwargs["bm25_b"] == 0.6
+
+    def test_create_index_omits_unset_bm25_args(self):
+        dest = self._make_dest()
+        dest._client.create_index.return_value = MagicMock()
+
+        dest.create_index("my-idx", 128, index_key=b"k" * 32)
+
+        call_kwargs = dest._client.create_index.call_args[1]
+        for key in ("metadata_schema", "text_fields", "bm25_k1", "bm25_b"):
+            assert key not in call_kwargs

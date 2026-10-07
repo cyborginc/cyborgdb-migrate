@@ -51,10 +51,18 @@ class CyborgDestination:
         metric: str | None = None,
         embedding_model: str | None = None,
         storage_precision: str | None = None,
+        metadata_schema: dict[str, dict[str, bool]] | None = None,
+        text_fields: list[str] | None = None,
+        bm25_k1: float | None = None,
+        bm25_b: float | None = None,
     ) -> None:
         """Create a new encrypted DiskIVF index.
 
         Provide exactly one of ``index_key`` or ``kms_name``.
+
+        ``metadata_schema``, ``text_fields``, and the BM25 tuning parameters
+        are fixed at create time and immutable, so they must be supplied here
+        for BM25 / full-text search to ever work on the migrated index.
         """
         if self._client is None:
             raise RuntimeError("Not connected — call connect() first")
@@ -75,6 +83,14 @@ class CyborgDestination:
             kwargs["embedding_model"] = embedding_model
         if storage_precision:
             kwargs["storage_precision"] = storage_precision
+        if metadata_schema:
+            kwargs["metadata_schema"] = metadata_schema
+        if text_fields:
+            kwargs["text_fields"] = text_fields
+        if bm25_k1 is not None:
+            kwargs["bm25_k1"] = bm25_k1
+        if bm25_b is not None:
+            kwargs["bm25_b"] = bm25_b
 
         self._index = self._client.create_index(**kwargs)
         self._index_name = name
