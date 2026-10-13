@@ -50,6 +50,12 @@ class DestIndexScreen(Screen):
 
                 yield Static("", id="config-summary")
 
+                yield Label("Full-text (BM25) fields — optional, comma-separated:")
+                yield Input(
+                    placeholder="Metadata fields to make BM25-searchable, e.g. title, body",
+                    id="text-fields-input",
+                )
+
                 yield Label("Encryption key:")
                 yield RadioSet(
                     RadioButton("Generate a new key (recommended)", value=True, id="gen-key"),
@@ -145,6 +151,11 @@ class DestIndexScreen(Screen):
         dim = self.state.source_info.dimension
         metric = self.state.source_info.metric
 
+        # BM25 full-text fields are fixed at create time and immutable, so
+        # they have to be collected here or the index can never do BM25.
+        raw_fields = self.query_one("#text-fields-input", Input).value
+        text_fields = [f.strip() for f in raw_fields.split(",") if f.strip()] or None
+
         # Determine key
         key_radio = self.query_one("#key-radio", RadioSet)
         generate_key = True
@@ -171,7 +182,7 @@ class DestIndexScreen(Screen):
                 self.app.push_screen(
                     KeyWarningModal(key_hex),
                     callback=lambda confirmed: self._on_key_confirmed(
-                        confirmed, index_name, dim, key_bytes, metric
+                        confirmed, index_name, dim, key_bytes, metric, text_fields
                     ),
                 )
 
@@ -190,13 +201,15 @@ class DestIndexScreen(Screen):
                 dimension=dim,
                 index_key=key_bytes,
                 metric=metric,
+                text_fields=text_fields,
             )
             self.state.index_name = index_name
             self.app.call_from_thread(self._push_next)
 
     def _on_key_confirmed(
         self, confirmed: bool, index_name: str, dim: int,
-        key_bytes: bytes, metric: str | None
+        key_bytes: bytes, metric: str | None,
+        text_fields: list[str] | None = None,
     ) -> None:
         if not confirmed:
             return
@@ -207,6 +220,7 @@ class DestIndexScreen(Screen):
                 dimension=dim,
                 index_key=key_bytes,
                 metric=metric,
+                text_fields=text_fields,
             )
             self.state.index_name = index_name
             self._push_next()

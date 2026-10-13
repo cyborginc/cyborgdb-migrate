@@ -1,5 +1,5 @@
 services:
-  # --- Milvus standalone (requires etcd + minio) ---
+  # --- Milvus standalone (requires etcd + S3-compatible object store) ---
   etcd:
     container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.25
@@ -17,20 +17,18 @@ services:
       timeout: 20s
       retries: 3
 
-  minio:
-    container_name: milvus-minio
-    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+  rustfs:
+    container_name: milvus-rustfs
+    image: rustfs/rustfs:1.0.1
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
     ports:
-      - "9001:9001"
       - "9000:9000"
     volumes:
-      - ./volumes/minio:/minio_data
-    command: minio server /minio_data --console-address ":9001"
+      - rustfs-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -43,7 +41,7 @@ services:
       - seccomp:unconfined
     environment:
       ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
+      MINIO_ADDRESS: rustfs:9000
     volumes:
       - ./volumes/milvus:/var/lib/milvus
     healthcheck:
@@ -56,8 +54,10 @@ services:
       - "19530:19530"
       - "9091:9091"
     depends_on:
-      - etcd
-      - minio
+      etcd:
+        condition: service_started
+      rustfs:
+        condition: service_healthy
 
   # --- Weaviate ---
   weaviate:
@@ -111,6 +111,9 @@ services:
       - CYBORGDB_API_KEY=${CYBORGDB_API_KEY:?Set CYBORGDB_API_KEY in .env}
     depends_on:
       - redis
+
+volumes:
+  rustfs-data:
 
 networks:
   default:

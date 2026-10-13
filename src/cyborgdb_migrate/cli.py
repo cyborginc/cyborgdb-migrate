@@ -152,6 +152,10 @@ def run_headless(
             metric=source_info.metric,
             embedding_model=config.embedding_model,
             storage_precision=config.storage_precision,
+            metadata_schema=config.metadata_schema,
+            text_fields=config.text_fields,
+            bm25_k1=config.bm25_k1,
+            bm25_b=config.bm25_b,
         )
     else:
         index_key = None

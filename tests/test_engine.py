@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from datetime import date, datetime, timezone
 from unittest.mock import patch
 
 from cyborgdb_migrate.engine import MigrationEngine, ProgressUpdate
@@ -304,3 +305,82 @@ class TestMigrationEngineProgress:
         # Last update should show vectors migrated
         final = updates[-1]
         assert final.vectors_migrated == 5
+
+
+class TestMigrationEngineDatetimeMetadata:
+    """The 0.18 SDK stores datetime/date metadata as epoch milliseconds and
+    returns it that way — verification must not flag that as a mismatch."""
+
+    class _SdkLikeDestination(MockDestination):
+        def upsert_batch(self, records):
+            coerced = []
+            for r in records:
+                meta = {}
+                for k, v in r.metadata.items():
+                    if isinstance(v, datetime):
+                        if v.tzinfo is None:
+                            v = v.replace(tzinfo=timezone.utc)
+                        meta[k] = int(v.timestamp() * 1000)
+                    elif isinstance(v, date):
+                        dt = datetime(v.year, v.month, v.day, tzinfo=timezone.utc)
+                        meta[k] = int(dt.timestamp() * 1000)
+                    else:
+                        meta[k] = v
+                coerced.append(
+                    VectorRecord(id=r.id, vector=r.vector, metadata=meta, contents=r.contents)
+                )
+            return super().upsert_batch(coerced)
+
+    def _run(self, records):
+        source = MockSource([(records, None)])
+        dest = self._SdkLikeDestination()
+        engine = MigrationEngine(
+            source=source,
+            destination=dest,
+            source_info=make_source_info(len(records)),
+            batch_size=len(records),
+            spot_check_per_batch=len(records),
+        )
+        return engine.run()
+
+    def test_datetime_metadata_verifies(self):
+        records = [
+            VectorRecord(
+                id="v1",
+                vector=[1.0] * 4,
+                metadata={
+                    "created": datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+                    "day": date(2026, 1, 2),
+                    "label": "a",
+                },
+            ),
+            VectorRecord(
+                id="v2",
+                vector=[2.0] * 4,
+                metadata={"created": datetime(2026, 5, 6, 7, 8, 9)},  # naive → UTC
+            ),
+        ]
+        result = self._run(records)
+        assert result.spot_check_passed, result.spot_check_details
+
+    def test_wrong_datetime_still_fails(self):
+        records = [
+            VectorRecord(
+                id="v1",
+                vector=[1.0] * 4,
+                metadata={"created": datetime(2026, 1, 2, tzinfo=timezone.utc)},
+            ),
+        ]
+        source = MockSource([(records, None)])
+        dest = self._SdkLikeDestination()
+        engine = MigrationEngine(
+            source=source,
+            destination=dest,
+            source_info=make_source_info(1),
+            batch_size=1,
+            spot_check_per_batch=1,
+        )
+        engine.run()
+        dest._stored["v1"].metadata["created"] += 1  # corrupt by 1ms
+        passed, details = engine.verify()
+        assert not passed

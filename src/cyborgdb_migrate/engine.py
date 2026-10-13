@@ -6,6 +6,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from datetime import time as dt_time
 from typing import Callable
 
 import numpy as np
@@ -21,6 +23,31 @@ from cyborgdb_migrate.models import MigrationResult, SourceInfo, VectorRecord
 from cyborgdb_migrate.sources.base import SourceConnector
 
 logger = logging.getLogger(__name__)
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _normalize_metadata(value):
+    """Mirror the cyborgdb SDK's upsert coercion for comparison purposes.
+
+    The 0.18 SDK stores datetime/date metadata values as integer epoch
+    milliseconds (naive datetimes treated as UTC) and returns them that way
+    from get(). Source connectors may yield real datetime objects (e.g.
+    Weaviate DATE properties), so the cached sample must be normalized the
+    same way before comparing against the fetched record.
+    """
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return (value - _EPOCH) // timedelta(milliseconds=1)
+    if isinstance(value, date):
+        midnight = datetime.combine(value, dt_time(), tzinfo=timezone.utc)
+        return (midnight - _EPOCH) // timedelta(milliseconds=1)
+    if isinstance(value, dict):
+        return {k: _normalize_metadata(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_normalize_metadata(item) for item in value]
+    return value
 
 
 @dataclass
@@ -241,8 +268,10 @@ class MigrationEngine:
                 mismatches += 1
                 continue
 
-            # Metadata comparison
-            if sample.metadata != dest_rec.metadata:
+            # Metadata comparison — normalize the sample the way the SDK
+            # stores it (datetimes → epoch ms) so a correct migration of
+            # date-typed metadata doesn't report a false mismatch.
+            if _normalize_metadata(sample.metadata) != dest_rec.metadata:
                 mismatches += 1
 
         total_samples = len(self._verification_samples)

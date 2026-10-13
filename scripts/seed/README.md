@@ -22,7 +22,14 @@ This runs:
 | Milvus | 19530 | `milvusdb/milvus:v2.5.27` |
 | CyborgDB | 8000 | `cyborginc/cyborgdb:0.15.0` |
 
-Milvus also starts etcd (port 2379) and MinIO (ports 9000, 9001) as dependencies.
+Milvus also starts etcd (port 2379) and RustFS (port 9000, an S3-compatible MinIO replacement) as dependencies.
+
+> **Upgrading from a pre-RustFS checkout?** The stack previously used MinIO. Stale state under `./volumes/` references objects RustFS can't see, so reset and reseed:
+>
+> ```bash
+> docker compose down -v --remove-orphans && rm -rf ./volumes && docker compose up -d
+> python seed.py all
+> ```
 
 CyborgDB requires `CYBORGDB_API_KEY` env var to be set.
 

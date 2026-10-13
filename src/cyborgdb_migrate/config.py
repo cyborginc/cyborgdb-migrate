@@ -63,6 +63,10 @@ class MigrationConfig:
     kms_name: str | None = None
     embedding_model: str | None = None
     storage_precision: str | None = None
+    metadata_schema: dict[str, dict[str, bool]] | None = None
+    text_fields: list[str] | None = None
+    bm25_k1: float | None = None
+    bm25_b: float | None = None
     key_file: str | None = None
     index_key: str | None = None  # hex-encoded, for existing indexes
 
@@ -117,6 +121,18 @@ def load_config(path: str) -> MigrationConfig:
     config.kms_name = dest.get("kms_name")
     config.embedding_model = dest.get("embedding_model")
     config.storage_precision = dest.get("storage_precision")
+    config.metadata_schema = dest.get("metadata_schema")
+    config.text_fields = dest.get("text_fields")
+    config.bm25_k1 = dest.get("bm25_k1")
+    config.bm25_b = dest.get("bm25_b")
+    if (config.bm25_k1 is not None or config.bm25_b is not None) and not (
+        config.text_fields
+        or any(f.get("full_text") for f in (config.metadata_schema or {}).values())
+    ):
+        raise ValueError(
+            "[destination].bm25_k1/bm25_b require at least one full-text field "
+            "(set text_fields or mark a metadata_schema field full_text)"
+        )
     config.key_file = dest.get("key_file")
     config.index_key = dest.get("index_key")
 

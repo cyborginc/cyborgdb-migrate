@@ -18,7 +18,19 @@ index_name = "my-cyborgdb-index"
 create_index = true
 # kms_name = "aws-kms"               # Use a KMS-wrapped key instead of a generated one
 # embedding_model = "text-embedding-3-small"
-# storage_precision = "fp16"         # fp32 (default) | fp16
+# storage_precision = "float16"      # float32 (default) | float16 | tq12 | tq8 | tq6 | tq4
+
+# Full-text (BM25) search — fixed at create time, immutable afterward.
+# text_fields = ["title", "body"]    # Metadata fields to make BM25-searchable
+# bm25_k1 = 1.2                      # Term-frequency saturation (default 1.2)
+# bm25_b = 0.75                      # Length normalization (default 0.75)
+
+# Per-field metadata indexing policy — fixed at create time, immutable.
+# Fields left out are filterable by default.
+# [destination.metadata_schema]
+# title = { filterable = true, pattern = true }
+# blob = { filterable = false }
+# body = { full_text = true }        # Same as listing it in text_fields
 
 # --- Existing index (uncomment to use) ---
 # create_index = false
