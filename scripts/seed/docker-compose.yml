@@ -1,5 +1,5 @@
 services:
-  # --- Milvus standalone (requires etcd + minio) ---
+  # --- Milvus standalone (requires etcd + S3-compatible object store) ---
   etcd:
     container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.25
@@ -17,24 +17,16 @@ services:
       timeout: 20s
       retries: 3
 
-  minio:
-    container_name: milvus-minio
-    # minio/minio was removed from Docker Hub; milvusdb/minio is the Milvus project's mirror.
-    image: milvusdb/minio:RELEASE.2024-05-28T17-19-04Z
+  rustfs:
+    container_name: milvus-rustfs
+    image: rustfs/rustfs:1.0.1
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
     ports:
-      - "9001:9001"
       - "9000:9000"
     volumes:
-      - ./volumes/minio:/minio_data
-    command: minio server /minio_data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      - ./volumes/rustfs:/data
 
   milvus:
     container_name: milvus-standalone
@@ -44,7 +36,7 @@ services:
       - seccomp:unconfined
     environment:
       ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
+      MINIO_ADDRESS: rustfs:9000
     volumes:
       - ./volumes/milvus:/var/lib/milvus
     healthcheck:
@@ -58,7 +50,7 @@ services:
       - "9091:9091"
     depends_on:
       - etcd
-      - minio
+      - rustfs
 
   # --- Weaviate ---
   weaviate:

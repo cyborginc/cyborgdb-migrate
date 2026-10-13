@@ -22,7 +22,7 @@ This runs:
 | Milvus | 19530 | `milvusdb/milvus:v2.5.27` |
 | CyborgDB | 8000 | `cyborginc/cyborgdb:0.15.0` |
 
-Milvus also starts etcd (port 2379) and MinIO (ports 9000, 9001) as dependencies.
+Milvus also starts etcd (port 2379) and RustFS (port 9000, an S3-compatible MinIO replacement) as dependencies.
 
 CyborgDB requires `CYBORGDB_API_KEY` env var to be set.
 
