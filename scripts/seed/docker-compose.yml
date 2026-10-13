@@ -26,7 +26,12 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - ./volumes/rustfs:/data
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   milvus:
     container_name: milvus-standalone
@@ -49,8 +54,10 @@ services:
       - "19530:19530"
       - "9091:9091"
     depends_on:
-      - etcd
-      - rustfs
+      etcd:
+        condition: service_started
+      rustfs:
+        condition: service_healthy
 
   # --- Weaviate ---
   weaviate:
@@ -104,6 +111,9 @@ services:
       - CYBORGDB_API_KEY=${CYBORGDB_API_KEY:?Set CYBORGDB_API_KEY in .env}
     depends_on:
       - redis
+
+volumes:
+  rustfs-data:
 
 networks:
   default:
