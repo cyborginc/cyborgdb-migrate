@@ -3,16 +3,11 @@ from __future__ import annotations
 import logging
 import os
 import re
-import sys
+import tomllib
 from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
 
 
 ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
