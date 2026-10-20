@@ -7,7 +7,7 @@ name = "cyborgdb-migrate"
 version = "0.18.0"
 description = "TUI wizard and CLI for migrating vector data into CyborgDB"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     {name = "Cyborg Inc."},
@@ -28,11 +28,11 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Database",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -44,7 +44,6 @@ dependencies = [
     "textual>=0.86.0,<9",
     "cyborgdb>=0.18,<0.19",
     "numpy>=1.21.0,<3",
-    "tomli>=1.1.0;python_version<'3.11'",
 ]
 
 # Source-connector extras. These clients talk to the user's OWN running server,
@@ -91,7 +90,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
