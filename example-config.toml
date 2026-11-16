@@ -11,11 +11,13 @@ index = "my-source-index"
 
 [destination]
 host = "http://localhost:8000"
-api_key = "${CYBORGDB_API_KEY}"
+api_key = "${CYBORGDB_SERVICE_API_KEY}" # Service root key or cdbk_ token (not the license key)
 index_name = "my-cyborgdb-index"
 
 # --- New index (default) ---
 create_index = true
+# index_key = "hex-encoded-key-here" # Create under a key you already hold
+# key_file = "/path/to/keyfile"      # Read if present; else the generated key is saved here
 # kms_name = "aws-kms"               # Use a KMS-wrapped key instead of a generated one
 # embedding_model = "text-embedding-3-small"
 # storage_precision = "float16"      # float32 (default) | float16 | tq12 | tq8 | tq6 | tq4

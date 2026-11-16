@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 
 from cyborgdb_migrate import __version__
@@ -135,14 +136,41 @@ def run_headless(
     if config.create_index:
         index_key: bytes | None = None
         if config.kms_name:
+            if config.index_key or config.key_file:
+                console.print(
+                    "[red]kms_name cannot be combined with index_key or key_file "
+                    "when creating an index (the service generates the KMS-wrapped key)[/red]"
+                )
+                raise SystemExit(1)
             if not quiet:
                 console.print(f"Using KMS-wrapped key (kms_name={config.kms_name})")
+        elif config.index_key:
+            index_key = _decode_key(config.index_key)
+            if not quiet:
+                console.print("Creating index with key from config (index_key)")
+        elif config.key_file and os.path.exists(config.key_file):
+            with open(config.key_file) as f:
+                index_key = _decode_key(f.read().strip())
+            if not quiet:
+                console.print(f"Creating index with key from {config.key_file}")
         else:
             from cyborgdb import Client
 
             index_key = Client.generate_key(save=False)
+            key_path = config.key_file or _default_key_path(config.index_name)
+            try:
+                _write_key_file(key_path, index_key)
+            except FileExistsError:
+                console.print(
+                    f"[red]Key file {key_path} already exists; refusing to overwrite it "
+                    "with a newly generated key. Set key_file to reuse that key, or move "
+                    "the file aside.[/red]"
+                )
+                raise SystemExit(1) from None
+            logger.info("Generated index key written to %s", key_path)
             if not quiet:
                 console.print(f"Generated encryption key (hex): {index_key.hex()}")
+                console.print(f"Key saved to {key_path} (mode 0600) — keep it safe")
 
         destination.create_index(
             name=config.index_name,
@@ -233,6 +261,24 @@ def run_headless(
     if not result.spot_check_passed:
         logger.warning("Spot check failed: %s", result.spot_check_details)
         raise SystemExit(2)
+
+
+def _default_key_path(index_name: str) -> str:
+    """Default location for a generated index key: next to the checkpoints."""
+    from cyborgdb_migrate.checkpoint import CHECKPOINT_DIR
+
+    safe_name = index_name.replace("/", "_").replace("\\", "_")
+    return os.path.join(CHECKPOINT_DIR, f"{safe_name}.key")
+
+
+def _write_key_file(path: str, key: bytes) -> None:
+    """Write a key as hex to `path` with mode 0600; raise FileExistsError if it exists."""
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(key.hex() + "\n")
 
 
 def _decode_key(value: str) -> bytes:

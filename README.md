@@ -62,9 +62,11 @@ index = "my-index"
 
 [destination]
 host = "http://localhost:8000"
-api_key = "${CYBORGDB_API_KEY}"
+api_key = "${CYBORGDB_SERVICE_API_KEY}"  # service root key or cdbk_ token (not the license key)
 create_index = true
 index_name = "my-cyborgdb-index"
+# index_key = "..."               # optional: create the index under a key you already hold
+# key_file = "/path/to/keyfile"   # optional: read the key from this file (or save the generated key here)
 # kms_name = "aws-kms"            # optional: use a KMS-wrapped key
 
 [options]
@@ -75,6 +77,8 @@ checkpoint_every = 10
 ```bash
 cyborgdb-migrate --config migration.toml
 ```
+
+When no key is supplied, the generated index key is saved (hex, mode `0600`) to `key_file` if set, otherwise to `./cyborgdb-migrate-checkpoints/<index_name>.key` — including with `--quiet`. Keep that file safe: it is required to read the migrated index.
 
 Resume an interrupted migration:
 
