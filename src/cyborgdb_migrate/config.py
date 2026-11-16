@@ -68,7 +68,7 @@ class MigrationConfig:
     bm25_k1: float | None = None
     bm25_b: float | None = None
     key_file: str | None = None
-    index_key: str | None = None  # hex-encoded, for existing indexes
+    index_key: str | None = None  # hex-encoded
 
     batch_size: int = 100
     checkpoint_every: int = 10
