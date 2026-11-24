@@ -48,6 +48,41 @@ batch_size = 50
 """
 
 
+class TestWriteKeyFile:
+    def test_writes_hex_with_mode_0600(self, tmp_path):
+        from cyborgdb_migrate.cli import _write_key_file
+
+        target = tmp_path / "k.key"
+        _write_key_file(str(target), b"\x0a" * 32)
+        assert target.read_text().strip() == "0a" * 32
+        assert (target.stat().st_mode & 0o777) == 0o600
+        assert list(tmp_path.iterdir()) == [target]  # no temp file left behind
+
+    def test_refuses_existing_target(self, tmp_path):
+        from cyborgdb_migrate.cli import _write_key_file
+
+        target = tmp_path / "k.key"
+        target.write_text("old")
+        with pytest.raises(FileExistsError):
+            _write_key_file(str(target), b"\x0b" * 32)
+        assert target.read_text() == "old"
+        assert list(tmp_path.iterdir()) == [target]
+
+    def test_failed_publish_leaves_nothing(self, tmp_path, monkeypatch):
+        import os
+
+        from cyborgdb_migrate.cli import _write_key_file
+
+        def boom(src, dst):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(os, "link", boom)
+        target = tmp_path / "k.key"
+        with pytest.raises(OSError):
+            _write_key_file(str(target), b"\x0c" * 32)
+        assert list(tmp_path.iterdir()) == []  # no final file, no temp file
+
+
 class TestDecodeKey:
     def test_hex_key(self):
         key_hex = "00" * 32

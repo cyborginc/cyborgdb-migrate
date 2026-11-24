@@ -273,12 +273,20 @@ def _default_key_path(index_name: str) -> str:
 
 def _write_key_file(path: str, key: bytes) -> None:
     """Write a key as hex to `path` with mode 0600; raise FileExistsError if it exists."""
+    import tempfile
+
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(key.hex() + "\n")
+    # Write to a temp file first so a failed write never leaves a partial key at
+    # the final path; os.link publishes it atomically without overwriting.
+    fd, tmp_path = tempfile.mkstemp(dir=parent or ".", suffix=".key.tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(key.hex() + "\n")
+        os.link(tmp_path, path)
+    finally:
+        os.unlink(tmp_path)
 
 
 def _decode_key(value: str) -> bytes:
